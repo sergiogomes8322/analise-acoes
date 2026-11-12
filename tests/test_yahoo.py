@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from analise.fontes import yahoo
 from analise.modelo import CAMPOS_ANUAIS
@@ -68,6 +69,15 @@ def test_pesquisar_sem_resultados(monkeypatch):
     assert yahoo.pesquisar("xyz") == []
 
 
+def test_pesquisar_falha_levanta(monkeypatch):
+    class S:
+        def __init__(self, *a, **k):
+            raise RuntimeError("rede")
+    monkeypatch.setattr(yahoo.yf, "Search", S)
+    with pytest.raises(yahoo.FonteIndisponivel):
+        yahoo.pesquisar("xyz")
+
+
 def test_capitalizacao_em_gbp():
     info, e = _carregar("SHEL.L")
     assert abs(e.capitalizacao.valor / (e.preco.valor * e.acoes.valor) - 1) < 0.05
@@ -82,7 +92,8 @@ def test_carregar_empresa_info_falha(monkeypatch):
         def info(self):
             raise RuntimeError("rede")
     monkeypatch.setattr(yahoo.yf, "Ticker", T)
-    assert yahoo.carregar_empresa("X") is None
+    with pytest.raises(yahoo.FonteIndisponivel):
+        yahoo.carregar_empresa("X")
 
 
 def test_carregar_empresa_historico_vazio(monkeypatch):

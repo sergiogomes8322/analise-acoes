@@ -20,7 +20,7 @@ def _empresa():
 
 
 def _textos(at):
-    return " ".join(str(e.value) for e in [*at.subheader, *at.markdown, *at.warning, *at.metric])
+    return " ".join(str(e.value) for e in [*at.subheader, *at.markdown, *at.warning, *at.metric, *at.caption])
 
 
 def test_mostra_correspondencias_e_empresa(monkeypatch):
@@ -32,7 +32,9 @@ def test_mostra_correspondencias_e_empresa(monkeypatch):
     assert at.selectbox[0].options and "ASML.AS" in at.selectbox[0].options[0]
     txt = _textos(at)
     assert "ASML Holding N.V." in txt and "700.5" in txt and "EUR" in txt
-    assert "3" in txt
+    assert "Anos de receita: 3 (2022–2024)" in txt
+    assert "Fonte: Yahoo Finance, 2026-01-01" in txt
+    assert "https://example.com" in txt
 
 
 def test_sem_correspondencias(monkeypatch):
@@ -48,3 +50,27 @@ def test_empresa_nula(monkeypatch):
     at = AppTest.from_file("../app.py").run()
     at.text_input[0].set_value("zzz").run()
     assert [w.value for w in at.warning] == [NAO_ENCONTRADA]
+
+
+def test_sem_anos_de_receita(monkeypatch):
+    e = _empresa()
+    e.anual["receita"] = Serie({}, e.preco.fonte)
+    monkeypatch.setattr(yahoo, "pesquisar", lambda t: [yahoo.Correspondencia("ASML.AS", "ASML", "Amsterdam", "EQUITY")])
+    monkeypatch.setattr(yahoo, "carregar_empresa", lambda t, **k: e)
+    at = AppTest.from_file("../app.py").run()
+    at.text_input[0].set_value("ASML").run()
+    txt = _textos(at)
+    assert "Receita: N/D (sem balanços disponíveis)" in txt
+    assert "Anos de receita: 0" not in txt
+
+
+@pytest.mark.parametrize("onde", ["pesquisar", "carregar_empresa"])
+def test_fonte_indisponivel(monkeypatch, onde):
+    def falha(*a, **k):
+        raise yahoo.FonteIndisponivel()
+    monkeypatch.setattr(yahoo, "pesquisar", lambda t: [yahoo.Correspondencia("X", "X", "B", "EQUITY")])
+    monkeypatch.setattr(yahoo, onde, falha)
+    at = AppTest.from_file("../app.py").run()
+    at.text_input[0].set_value("x").run()
+    assert [e.value for e in at.error] == ["Yahoo Finance indisponível de momento. Tenta novamente mais tarde."]
+    assert not at.warning

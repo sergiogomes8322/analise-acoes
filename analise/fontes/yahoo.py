@@ -31,6 +31,10 @@ _ORIGEM = {  # campo -> demonstração onde está o rótulo
 _SUBUNIDADES = {"GBp": "GBP", "ZAc": "ZAR", "ILA": "ILS"}
 
 
+class FonteIndisponivel(Exception):
+    """Yahoo ou a rede falharam (diferente de "não encontrado")."""
+
+
 @dataclass
 class Correspondencia:
     ticker: str
@@ -42,8 +46,8 @@ class Correspondencia:
 def pesquisar(texto: str) -> list[Correspondencia]:
     try:
         quotes = yf.Search(texto).quotes
-    except Exception:
-        return []
+    except Exception as erro:
+        raise FonteIndisponivel(str(erro)) from erro
     return [Correspondencia(q["symbol"], q.get("longname") or q.get("shortname") or "",
                             q.get("exchDisp") or q.get("exchange") or "", q["quoteType"])
             for q in quotes if q.get("quoteType") == "EQUITY" and q.get("symbol")]
@@ -111,7 +115,7 @@ def carregar_empresa(ticker: str, converter: Callable[[str, str], float | None] 
             return None
         dem = {"income": t.income_stmt, "balance": t.balance_sheet, "cashflow": t.cash_flow}
         hist, divs = t.history(period="5y"), t.dividends
-    except Exception:
-        return None
+    except Exception as erro:
+        raise FonteIndisponivel(str(erro)) from erro
     precos = hist["Close"] if "Close" in hist else pd.Series(dtype=float)
     return empresa_de_dados(info, dem, precos, divs, date.today().isoformat(), converter)
