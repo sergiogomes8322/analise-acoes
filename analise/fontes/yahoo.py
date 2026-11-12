@@ -81,7 +81,7 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
         preco=Dado(None if preco is None else preco / div, fonte),
         acoes=Dado(info.get("sharesOutstanding"), fonte),
         beta=Dado(info.get("beta"), fonte),
-        capitalizacao=Dado(info.get("marketCap"), fonte)  # Yahoo já dá a capitalização em GBP, não em GBp,
+        capitalizacao=Dado(info.get("marketCap"), fonte),  # já em GBP, não em GBp
         precos=(precos / div).dropna(), avisos=avisos, links=[fonte],
     )
 
