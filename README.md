@@ -1,0 +1,99 @@
+# Análise de Ações
+
+Aplicação web (feita em Python com Streamlit) para analisar ações cotadas.
+
+Escreves o nome ou o símbolo (o *ticker*, por exemplo `AAPL`) de uma empresa e a app mostra uma ficha com:
+
+- **Análise**: indicadores da empresa, como rentabilidade, dívida e crescimento.
+- **Valor intrínseco**: quanto a empresa deveria valer, calculado por vários métodos (DCF, Owner Earnings, fórmula e número de Graham, EPV, múltiplos históricos, Gordon, P/B para bancos). *DCF* quer dizer fluxos de caixa descontados: estima o dinheiro que a empresa vai gerar e traz esse valor para hoje.
+- **Lentes de 6 investidores**: Buffett, Graham, Lynch, Ackman, Greenblatt e Druckenmiller. Cada lente aplica os critérios conhecidos desse investidor.
+- **Pontuação de 0 a 100**, com o risco incluído. A partir de **78** a nota é "Boa".
+
+> Informação educativa, não é aconselhamento financeiro.
+> As lentes são interpretações feitas por este programa, não são opiniões dos investidores.
+> O limite de 78 é uma regra tua, não é uma previsão de que a ação vai subir.
+
+## Correr localmente
+
+```
+uv run python -m streamlit run app.py
+```
+
+Usa `python -m streamlit` e não `uv run streamlit`: no Windows, o segundo pode falhar com "Acesso negado".
+
+## Testes
+
+```
+uv run pytest -q
+```
+
+Os testes funcionam sem internet. Usam dados de exemplo guardados em vez de ir buscar dados reais.
+
+## Onde mudar limites e pesos
+
+Tudo está em `config.toml`. Podes editar os números sem mexer no código. As secções principais:
+
+- `[pontuacao.pesos]`: quanto cada parte conta na nota (valorização, qualidade, solidez, risco de mercado, tendência). Somam 1.
+- `[pontuacao.faixas]`: a nota a partir da qual é "Boa" (`boa = 78`), "Neutra" (`neutra = 60`) e a cobertura mínima de dados.
+- `[pontuacao.limites]`: para cada indicador, o valor que dá 0 pontos e o que dá 100.
+- `[alertas]`: valores que fazem aparecer um aviso (volatilidade, dívida, beta, etc.).
+- `[lentes.*]`: critérios de cada investidor, por exemplo `[lentes.buffett]` ou `[lentes.graham]`.
+- `[dcf]`: prémio de mercado, crescimento terminal, número de anos, etc.
+- `[sem_risco_defeito]`: taxa sem risco por moeda, usada quando não há taxa atual. Tem uma data (`data = "2026-11-11"`) e deve ser **revista** de tempos a tempos.
+
+Há ainda `[graham]`, `[impostos]`, `[historico]`, `[perfil]` e `[verificacao]`.
+
+## Mapa das pastas
+
+- `app.py`: a interface (o ecrã que vês no browser).
+- `config.toml`: limites, pesos e taxas (ver acima).
+- `analise/`: toda a lógica, sem interface.
+  - `config.py`: lê o `config.toml`.
+  - `modelo.py`: as estruturas de dados (empresa, resultados).
+  - `indicadores.py`: calcula os indicadores financeiros.
+  - `fontes/`: vai buscar dados (`yahoo.py`, `taxas.py`, `sec.py`, `esef.py`).
+  - `valor/`: métodos de valor intrínseco (`dcf.py`, `outros.py`) e o valor central (`central.py`).
+  - `perfil.py`: classifica a empresa (crescimento, valor, etc.).
+  - `pontuacao.py`: calcula a nota de 0 a 100 e os alertas.
+  - `lentes/`: uma lente por investidor.
+  - `servico.py`: junta tudo para a app usar.
+  - `verificacao.py`: compara dados de fontes diferentes e avisa se divergem.
+- `tests/`: testes automáticos.
+- `docs/`: especificação e planos do projeto.
+- `requirements.txt`: dependências para o Streamlit Cloud (gerado, ver abaixo).
+- `pyproject.toml` e `uv.lock`: dependências do projeto, geridas pelo `uv`.
+
+## Fontes de dados e limites
+
+- **Yahoo Finance**: preços e dados financeiros. Não é uma fonte oficial: pode falhar ou mudar sem aviso.
+- **SEC EDGAR** (empresas dos EUA): relatórios oficiais. Exige que o pedido se identifique com um contacto, na variável `SEC_USER_AGENT`. Define-a nos *Secrets* do Streamlit Cloud ou como variável de ambiente. Nunca a pongas no Git.
+- **filings.xbrl.org + GLEIF** (empresas da Europa): relatórios oficiais ESEF. O índice nem sempre encontra a empresa, por isso funciona "o melhor possível".
+- **BCE** (Banco Central Europeu): taxas de juro e câmbios.
+- **TradingView não é usado**: os termos de utilização proíbem a recolha automática de dados.
+
+## Segredos
+
+Para correr localmente, cria `.streamlit/secrets.toml` (o Git ignora este ficheiro):
+
+```toml
+SEC_USER_AGENT = "Nome contacto@exemplo.com"
+```
+
+Troca o texto por um nome e um contacto teus. Não partilhes este ficheiro.
+
+## Publicar (mais tarde)
+
+1. `gh auth login` para entrares no GitHub.
+2. Cria um repositório **privado** no GitHub e envia o código.
+3. Vai a share.streamlit.io, escolhe *New app* e indica `app.py`.
+4. Em *Secrets*, adiciona `SEC_USER_AGENT = "Nome contacto@exemplo.com"`.
+
+Se mudares dependências, regenera o `requirements.txt`:
+
+```
+uv export --no-hashes --no-dev -o requirements.txt
+```
+
+## Windows e antivírus (AVG)
+
+Se aparecerem erros de HTTPS ao correr localmente, a causa costuma ser o antivírus, que inspeciona ligações HTTPS. A configuração do ambiente define `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE` e `CURL_CA_BUNDLE` para apontarem para um ficheiro de certificados que resolve isto. Se mudares de computador, repete esse passo.
