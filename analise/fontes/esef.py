@@ -15,17 +15,26 @@ PAISES_UE_EEE = {
     "Lithuania", "Luxembourg", "Malta", "Netherlands", "Poland", "Portugal", "Romania", "Slovakia",
     "Slovenia", "Spain", "Sweden", "Iceland", "Liechtenstein", "Norway",
 }
-# Algumas empresas (ex. ASML) usam RevenueFromContractsWithCustomers em vez de Revenue.
-_RECEITA = ("ifrs-full:Revenue", "ifrs-full:RevenueFromContractsWithCustomers")
-_LUCRO = "ifrs-full:ProfitLoss"
+# Conceitos por prioridade. Receita: algumas empresas (ex. ASML) usam RevenueFromContractsWithCustomers.
+# Lucro: o atribuível aos acionistas é comparável com o "Net Income" do Yahoo.
+_CONCEITOS = {
+    "receita": ("ifrs-full:Revenue", "ifrs-full:RevenueFromContractsWithCustomers"),
+    "lucro_liquido": ("ifrs-full:ProfitLossAttributableToOwnersOfParent", "ifrs-full:ProfitLoss"),
+}
 _DIMENSOES_BASE = {"concept", "entity", "period", "unit", "language"}
 
 
 def lei_de(nome: str) -> str | None:
-    r = requests.get(_URL_GLEIF, params={"filter[fulltext]": nome, "page[size]": 1},
+    r = requests.get(_URL_GLEIF, params={"filter[fulltext]": nome, "page[size]": 5},
                      headers=_UA, timeout=15)
     r.raise_for_status()
     dados = r.json().get("data") or []
+    ativos = [d for d in dados if d["attributes"]["entity"].get("status") == "ACTIVE"] or dados
+    alvo = nome.casefold()
+    for ok in (lambda n: n == alvo, lambda n: n.startswith(alvo)):
+        for d in ativos:
+            if ok(d["attributes"]["entity"]["legalName"]["name"].casefold()):
+                return d["id"]
     return dados[0]["id"] if dados else None
 
 
@@ -36,24 +45,23 @@ def _periodo(p: str) -> tuple[datetime, datetime]:
 
 def valores_xbrl(dados: dict) -> dict:
     """{ano, moeda, receita, lucro_liquido} do exercício anual mais recente de um xBRL-JSON."""
-    achados: dict[tuple[datetime, str], tuple[str, float, str]] = {}  # (fim, campo) -> (conceito, valor, moeda)
+    achados: dict[tuple[datetime, str], tuple[int, float, str]] = {}  # (fim, campo) -> (prioridade, valor, moeda)
     for f in dados["facts"].values():
         d = f["dimensions"]
-        campo = "receita" if d["concept"] in _RECEITA else "lucro_liquido" if d["concept"] == _LUCRO else None
+        campo = next((c for c, ks in _CONCEITOS.items() if d["concept"] in ks), None)
         if campo is None or set(d) - _DIMENSOES_BASE or "/" not in d.get("period", ""):
             continue
         ini, fim = _periodo(d["period"])
         if not 330 <= (fim - ini).days <= 400:
             continue
-        # a ordem de _RECEITA decide entre conceitos alternativos do mesmo período
-        chave, prio = (fim, campo), (_RECEITA.index(d["concept"]) if campo == "receita" else 0)
-        if chave not in achados or prio < achados[chave][3]:
-            achados[chave] = (d["concept"], float(f["value"]), d["unit"].split(":")[-1], prio)
+        prio = _CONCEITOS[campo].index(d["concept"])
+        if (fim, campo) not in achados or prio < achados[(fim, campo)][0]:
+            achados[(fim, campo)] = (prio, float(f["value"]), d["unit"].split(":")[-1])
     if not achados:
         return {}
     fim = max(k[0] for k in achados)
     out = {"ano": (fim - timedelta(days=1)).year}  # fim é exclusivo (meia-noite do dia seguinte)
-    for (f, campo), (_, valor, moeda, _) in achados.items():
+    for (f, campo), (_, valor, moeda) in achados.items():
         if f == fim:
             out[campo], out["moeda"] = valor, moeda
     return out

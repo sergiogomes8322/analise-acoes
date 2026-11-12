@@ -23,5 +23,5 @@ def verificar(e: Empresa, oficial: dict, fonte: Fonte) -> list[str]:
         if dif > limite:
             z = f"{dif * 100:.1f}".replace(".", ",")
             avisos.append(f"⚠️ {rotulo} {ano}: Yahoo {_milhoes(yahoo)} vs relatório oficial "
-                          f"{_milhoes(ref)} (dif. {z} %)")
+                          f"{_milhoes(ref)} (dif. {z} %) — fonte: {fonte.nome}")
     return avisos

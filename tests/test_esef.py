@@ -47,7 +47,7 @@ def _rede(monkeypatch, filings=FILINGS, falha=None):
 
 def test_verificar_divergencia_5pct_avisa():
     av = verificacao.verificar(_empresa(receita=105e6), {"ano": 2025, "moeda": "EUR", "receita": 100e6}, OFICIAL)
-    assert av == ["⚠️ Receita 2025: Yahoo 105,0 M vs relatório oficial 100,0 M (dif. 5,0 %)"]
+    assert av == ["⚠️ Receita 2025: Yahoo 105,0 M vs relatório oficial 100,0 M (dif. 5,0 %) — fonte: Relatório oficial (ESEF)"]
 
 
 def test_verificar_1pct_nao_avisa():
@@ -57,7 +57,7 @@ def test_verificar_1pct_nao_avisa():
 def test_verificar_formato_pt_e_lucro():
     e = _empresa(lucro=30_000_000_000.0)
     av = verificacao.verificar(e, {"ano": 2025, "moeda": "EUR", "lucro_liquido": 28_262_900_000.0}, OFICIAL)
-    assert av == ["⚠️ Lucro líquido 2025: Yahoo 30 000,0 M vs relatório oficial 28 262,9 M (dif. 6,1 %)"]
+    assert av == ["⚠️ Lucro líquido 2025: Yahoo 30 000,0 M vs relatório oficial 28 262,9 M (dif. 6,1 %) — fonte: Relatório oficial (ESEF)"]
 
 
 def test_verificar_moeda_diferente_salta():
@@ -120,3 +120,29 @@ def test_enriquecer_fora_da_ue(monkeypatch):
     _rede(monkeypatch, falha=AssertionError("não devia chamar"))
     e = esef.enriquecer(_empresa(pais="United States"))
     assert e.avisos == [] and e.links == []
+
+
+def test_lucro_atribuivel_tem_prioridade_sobre_profitloss():
+    d = json.loads(json.dumps(XBRL))
+    base = next(f for f in d["facts"].values() if f["dimensions"]["concept"] == "ifrs-full:ProfitLoss"
+                and f["dimensions"]["period"].startswith("2025"))
+    d["facts"]["x"] = {"value": "9000000000.0", "dimensions": {**base["dimensions"],
+                       "concept": "ifrs-full:ProfitLossAttributableToOwnersOfParent"}}
+    assert esef.valores_xbrl(d)["lucro_liquido"] == 9000000000.0
+
+
+def _hit(lei, nome, status="ACTIVE"):
+    return {"id": lei, "attributes": {"entity": {"legalName": {"name": nome}, "status": status}}}
+
+
+def test_lei_de_prefere_ativo_com_nome_igual(monkeypatch):
+    hits = {"data": [_hit("A", "ASML Holding NV ADRhedged(TM)"), _hit("B", "ASML Holding N.V.", "INACTIVE"),
+                     _hit("C", "asml holding"), _hit("D", "ASML Holding N.V.")]}
+    monkeypatch.setattr(esef.requests, "get", lambda *a, **k: Resp(hits))
+    assert esef.lei_de("ASML Holding") == "C"
+
+
+def test_lei_de_startswith_e_segundo_hit(monkeypatch):
+    hits = {"data": [_hit("A", "Outra Empresa"), _hit("B", "ASML Holding N.V.")]}
+    monkeypatch.setattr(esef.requests, "get", lambda *a, **k: Resp(hits))
+    assert esef.lei_de("ASML Holding") == "B"
