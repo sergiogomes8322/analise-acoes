@@ -186,3 +186,14 @@ def test_app_sem_valor_central(monkeypatch):
     txt = _textos(_correr(monkeypatch, _ficha(central=ValorCentral(None, None, None, None, 0))))
     assert "Valor intrínseco (central): N/D" in txt
     assert "intervalo" not in txt and "Margem de segurança" not in txt
+
+
+def test_erro_inesperado_mostra_mensagem(monkeypatch):
+    def rebenta(t, ua):
+        raise KeyError("x")
+    monkeypatch.setattr(yahoo, "pesquisar", lambda t: [ASML])
+    monkeypatch.setattr(servico, "analisar", rebenta)
+    at = AppTest.from_file("../app.py").run()
+    at.text_input[0].set_value("ASML").run()
+    assert not at.exception
+    assert [e.value for e in at.error] == ["Ocorreu um erro inesperado ao analisar esta ação."]

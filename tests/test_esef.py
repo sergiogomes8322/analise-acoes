@@ -146,3 +146,12 @@ def test_lei_de_startswith_e_segundo_hit(monkeypatch):
     hits = {"data": [_hit("A", "Outra Empresa"), _hit("B", "ASML Holding N.V.")]}
     monkeypatch.setattr(esef.requests, "get", lambda *a, **k: Resp(hits))
     assert esef.lei_de("ASML Holding") == "B"
+
+
+def test_valor_nulo_nao_rebenta(monkeypatch):
+    d = json.loads(json.dumps(XBRL))
+    for f in d["facts"].values():
+        f["value"] = None
+    monkeypatch.setattr(esef.requests, "get", lambda url, params=None, headers=None, timeout=None:
+                        Resp(GLEIF if "gleif" in url else d if url.endswith(".json") else FILINGS))
+    assert esef.enriquecer(_empresa()).avisos == ["Relatório oficial não encontrado"]

@@ -93,7 +93,7 @@ def enriquecer(e: Empresa) -> Empresa:
     try:
         lei = lei_de(e.nome)
         rel = ultimo_relatorio(lei) if lei else None
-    except (requests.RequestException, ValueError, KeyError):
+    except Exception:  # fonte secundária: JSON malformado (KeyError, TypeError...) nunca rebenta a ficha
         rel = None
     if rel is None:
         e.avisos.append("Relatório oficial não encontrado")

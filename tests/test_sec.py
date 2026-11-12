@@ -178,3 +178,12 @@ def test_por_acao_nunca_substituido_pela_sec(monkeypatch):
     assert e.anual["receita"].fonte.nome == "SEC EDGAR (10-K)"  # totais continuam a vir da SEC
     assert e.anual["eps"] is eps and e.anual["acoes_media"] is acoes and e.dividendos == divs
     assert abs(indicadores.diluicao_anual(e)) < 0.05
+
+
+def test_facto_malformado_nao_rebenta(monkeypatch):
+    d = json.loads(json.dumps(DADOS))
+    del d["facts"]["us-gaap"]["NetIncomeLoss"]["units"]["USD"][0]["end"]
+    monkeypatch.setattr(sec.requests, "get",
+                        lambda url, headers=None, timeout=None: Resp(TICKERS if "company_tickers" in url else d))
+    e = sec.enriquecer(_empresa(), "ua-x")
+    assert "SEC indisponível" in e.avisos and e.anual["receita"].fonte is YF

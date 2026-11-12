@@ -9,6 +9,7 @@ from analise.fontes import yahoo
 
 NAO_ENCONTRADA = "Não encontrei esta ação. Experimenta o ticker (ex.: ASML.AS)."
 INDISPONIVEL = "Yahoo Finance indisponível de momento. Tenta novamente mais tarde."
+ERRO_INESPERADO = "Ocorreu um erro inesperado ao analisar esta ação."
 AVISO_LENTES = "As lentes são interpretações de princípios públicos destes investidores, não as suas opiniões."
 RODAPE = "Informação educativa, não é aconselhamento financeiro."
 SEM_VALOR_JUSTO = ("Druckenmiller", "Greenblatt")  # lentes que não estimam um preço
@@ -180,4 +181,6 @@ if texto:
                 mostrar(ficha)
     except yahoo.FonteIndisponivel:
         st.error(INDISPONIVEL)
+    except Exception:  # dados inesperados de uma fonte: mensagem em vez de traceback
+        st.error(ERRO_INESPERADO)
 st.caption(RODAPE)

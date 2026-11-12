@@ -84,7 +84,7 @@ def enriquecer(e: Empresa, user_agent: str | None) -> Empresa:
         r = requests.get(_URL_FACTOS.format(cik=cik), headers={"User-Agent": user_agent}, timeout=15)
         r.raise_for_status()
         series = series_de_companyfacts(r.json(), hoje, cik)
-    except (requests.RequestException, ValueError):
+    except Exception:  # fonte secundária: JSON malformado (KeyError, TypeError...) nunca rebenta a ficha
         e.avisos.append("SEC indisponível")
         return e
     if e.moeda == "USD" and "receita" in series:  # verificação contra o Yahoo antes de o substituir
