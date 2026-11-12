@@ -1,10 +1,3 @@
-def escala(x: float | None, zero: float, cem: float) -> float | None:
-    """Interpolacao linear limitada a [0, 100]; zero > cem inverte a escala."""
-    if x is None:
-        return None
-    return max(0.0, min(100.0, (x - zero) / (cem - zero) * 100.0))
-
-
 import math
 import statistics
 
@@ -12,6 +5,13 @@ import pandas as pd
 
 from analise.config import carregar
 from analise.modelo import Empresa, Serie
+
+
+def escala(x: float | None, zero: float, cem: float) -> float | None:
+    """Interpolacao linear limitada a [0, 100]; zero > cem inverte a escala."""
+    if x is None:
+        return None
+    return max(0.0, min(100.0, (x - zero) / (cem - zero) * 100.0))
 
 DIAS_MES = 21
 
@@ -22,9 +22,13 @@ def _v(e: Empresa, campo: str, ano: int) -> float | None:
     return None if x is None or math.isnan(x) else x
 
 
-def _ultimo_ano(e: Empresa, campo: str) -> int | None:
+def _anos(e: Empresa, campo: str) -> list[int]:
     s = e.anual.get(campo)
-    anos = s.anos() if s else []
+    return s.anos() if s else []
+
+
+def _ultimo_ano(e: Empresa, campo: str) -> int | None:
+    anos = _anos(e, campo)
     return anos[-1] if anos else None
 
 
@@ -81,7 +85,8 @@ def preco_vs_mm200(precos: pd.Series) -> float | None:
     p = _limpa(precos)
     if len(p) < 200:
         return None
-    return _div(float(p.iloc[-1]), float(p.tail(200).mean()) or None) - 1 if p.tail(200).mean() else None
+    mm = float(p.tail(200).mean())
+    return float(p.iloc[-1]) / mm - 1 if mm else None
 
 
 def momento(precos: pd.Series, meses: int, saltar_meses: int = 0) -> float | None:
@@ -94,7 +99,7 @@ def momento(precos: pd.Series, meses: int, saltar_meses: int = 0) -> float | Non
 
 
 def taxa_imposto(e: Empresa) -> float:
-    taxas = [t / r for a in (e.anual.get("resultado_antes_impostos") or Serie({}, None)).anos()
+    taxas = [t / r for a in _anos(e, "resultado_antes_impostos")
              if (r := _v(e, "resultado_antes_impostos", a)) and r > 0
              and (t := _v(e, "impostos", a)) is not None]
     if not taxas:
@@ -150,8 +155,7 @@ def altman_z(e: Empresa) -> float | None:
 
 
 def piotroski_f(e: Empresa) -> int | None:
-    comuns = sorted(set(e.anual.get("lucro_liquido", Serie({}, None)).anos())
-                    & set(e.anual.get("ativo_total", Serie({}, None)).anos()))
+    comuns = sorted(set(_anos(e, "lucro_liquido")) & set(_anos(e, "ativo_total")))
     if len(comuns) < 2:
         return None
     a0, a1 = comuns[-2:]
