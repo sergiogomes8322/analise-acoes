@@ -1,3 +1,4 @@
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
@@ -45,6 +46,14 @@ class Correspondencia:
 
 
 def pesquisar(texto: str) -> list[Correspondencia]:
+    achadas = _pesquisar(texto)
+    sem_acentos = "".join(c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c))
+    if not achadas and sem_acentos != texto:  # o Yahoo falha "Jerónimo Martins" mas acha "Jeronimo"
+        achadas = _pesquisar(sem_acentos)
+    return achadas
+
+
+def _pesquisar(texto: str) -> list[Correspondencia]:
     try:
         quotes = yf.Search(texto).quotes
     except Exception as erro:

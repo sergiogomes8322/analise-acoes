@@ -141,3 +141,29 @@ def test_carregar_empresa_aviso_taxa_defeito(monkeypatch):
     monkeypatch.setattr(yahoo.taxas, "para_eur", lambda m: Dado(None, Fonte("t", "2026-11-11")))
     e = yahoo.carregar_empresa("X")
     assert "defeito" in e.avisos and e.cambio_eur.valor is None
+
+
+def test_pesquisar_repete_sem_acentos(monkeypatch):
+    pedidos = []
+
+    class S:
+        def __init__(self, texto, *a, **k):
+            pedidos.append(texto)
+            self.quotes = ([{"symbol": "JMT.LS", "longname": "Jerónimo Martins", "exchDisp": "Lisbon",
+                             "quoteType": "EQUITY"}] if texto == "Jeronimo Martins" else [])
+    monkeypatch.setattr(yahoo.yf, "Search", S)
+    r = yahoo.pesquisar("Jerónimo Martins")
+    assert pedidos == ["Jerónimo Martins", "Jeronimo Martins"]
+    assert [c.ticker for c in r] == ["JMT.LS"]
+
+
+def test_pesquisar_sem_acentos_nao_repete(monkeypatch):
+    pedidos = []
+
+    class S:
+        def __init__(self, texto, *a, **k):
+            pedidos.append(texto)
+            self.quotes = []
+    monkeypatch.setattr(yahoo.yf, "Search", S)
+    assert yahoo.pesquisar("xyz") == []
+    assert pedidos == ["xyz"]
