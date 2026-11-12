@@ -31,7 +31,7 @@ def _sub(e: Empresa, vc: ValorCentral) -> dict[str, dict[str, float | None]]:
     margens = [m for a in anos if (m := ind.margem_operacional(e, a)) is not None]
     receita = anual.get("receita")
     return {
-        "valorizacao": {"margem_seguranca": vc.margem},
+        "valorizacao": {"margem_vs_historico": vc.margem},
         "qualidade": {
             **rent,
             "cv_margem_operacional": ind.coef_variacao(margens),

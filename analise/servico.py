@@ -5,7 +5,7 @@ from analise.fontes import esef, sec, yahoo
 from analise.modelo import Empresa, Pontuacao, ResultadoLente, ResultadoMetodo
 from analise.pontuacao import calcular_pontuacao
 from analise.valor.central import ValorCentral, valor_central
-from analise.valor.outros import todos_os_metodos
+from analise.valor.outros import ev_ebit_historico, pe_historico, todos_os_metodos
 
 
 @dataclass
@@ -28,6 +28,9 @@ def analisar(ticker: str, user_agent: str | None) -> Ficha | None:
     e = esef.enriquecer(sec.enriquecer(e, user_agent))
     metodos = todos_os_metodos(e)
     central = valor_central(metodos, e.preco.valor)
+    # A pontuação mede o preço face aos múltiplos habituais da própria ação (escolha do utilizador),
+    # não face ao valor central, que os métodos clássicos puxam para baixo nas empresas de qualidade.
+    historico = valor_central([pe_historico(e), ev_ebit_historico(e)], e.preco.valor)
     alertas = perfil.alertas(e)
-    return Ficha(e, metodos, central, lentes.todas(e), calcular_pontuacao(e, central),
+    return Ficha(e, metodos, central, lentes.todas(e), calcular_pontuacao(e, historico),
                  perfil.classificar(e, e.preco.valor), alertas, perfil.etiqueta_risco(alertas))

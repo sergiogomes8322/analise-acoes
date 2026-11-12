@@ -174,7 +174,7 @@ A pontuação é a média ponderada de cinco componentes. Cada um vai de 0 a 100
 
 | Componente | Peso | O que mede |
 |---|---|---|
-| Valorização | 30 % | Margem de segurança face ao valor central |
+| Valorização | 30 % | Preço face aos múltiplos habituais da própria ação (mediana do P/E e do EV/EBIT históricos). Decisão do Sergio em 2026-11-12: o valor central ficava muito abaixo do preço nas empresas de qualidade e punha esta nota a 0 em quase todas |
 | Qualidade | 25 % | ROIC/ROE, margens e a sua estabilidade, crescimento consistente |
 | Solidez | 20 % | Dívida líquida/EBITDA, cobertura de juros, Altman Z, Piotroski F |
 | Risco de mercado | 15 % | Beta, volatilidade a 1 ano, queda máxima a 5 anos. Menos risco dá mais pontos |
@@ -200,7 +200,7 @@ Cada sub-indicador é convertido de forma linear entre um limite "0" e um limite
 
 | Componente | Sub-indicador | → 0 | → 100 |
 |---|---|---|---|
-| Valorização | Margem de segurança `(V − P) / V` | ≤ −30 % | ≥ +40 % |
+| Valorização | Margem face ao histórico `(V − P) / V`, com V = mediana do P/E e do EV/EBIT históricos | ≤ −30 % | ≥ +30 % |
 | Qualidade | ROIC (ou ROE em bancos), média dos anos disponíveis | ≤ 5 % | ≥ 25 % |
 | Qualidade | Estabilidade da margem operacional (coeficiente de variação) | ≥ 0,5 | ≤ 0,1 |
 | Qualidade | % dos anos com receita a crescer | 0 % | 100 % |

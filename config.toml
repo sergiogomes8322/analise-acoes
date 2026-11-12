@@ -42,7 +42,7 @@ cobertura_minima = 0.60
 
 # [zero, cem] por sub-indicador (spec §11)
 [pontuacao.limites]
-margem_seguranca = [-0.30, 0.40]
+margem_vs_historico = [-0.30, 0.30]   # preço vs mediana P/E e EV/EBIT históricos da própria ação
 roic = [0.05, 0.25]
 roe = [0.05, 0.25]               # usado em vez do ROIC em bancos/seguradoras
 cv_margem_operacional = [0.5, 0.1]

@@ -35,7 +35,7 @@ def test_calcular_pontuacao_detalhe():
     from tests.conftest import fazer_empresa
     p = calcular_pontuacao(fazer_empresa(), ValorCentral(100, 90, 110, 0.4, 3))
     c = {x.nome: x for x in p.componentes}
-    assert c["valorizacao"].nota == 100.0 and c["valorizacao"].detalhe == {"margem_seguranca": 0.4}
+    assert c["valorizacao"].nota == 100.0 and c["valorizacao"].detalhe == {"margem_vs_historico": 0.4}
     assert c["solidez"].nota is None and p.cobertura == approx(0.30)
 
 
