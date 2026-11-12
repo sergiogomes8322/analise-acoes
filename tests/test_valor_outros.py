@@ -53,13 +53,19 @@ def test_epv_financeira():
 
 
 def test_gordon_corte():
-    e = fazer_empresa(dividendos={2022: 1.0, 2023: 1.0, 2024: 0.5}, acoes=D(10))
+    e = fazer_empresa(dividendos={2020: 1.0, 2021: 1.0, 2022: 1.0, 2023: 1.0, 2024: 0.5}, acoes=D(10))
     r = gordon(e)
-    assert not r.aplicavel and r.valor_por_acao is None
+    assert not r.aplicavel and r.valor_por_acao is None and "cortado" in r.motivo
+
+
+def test_gordon_exige_5_anos_seguidos():
+    r = gordon(fazer_empresa(dividendos={2019: 1.0, 2021: 1.0, 2022: 1.0, 2023: 1.0, 2024: 1.0},
+                             acoes=D(10), taxa_sem_risco=D(0.025), beta=D(1.0)))
+    assert not r.aplicavel and r.motivo == "Dividendos insuficientes"
 
 
 def test_gordon_ok():
-    e = fazer_empresa(dividendos={2022: 1.0, 2023: 1.0, 2024: 1.0}, acoes=D(10),
+    e = fazer_empresa(dividendos={a: 1.0 for a in range(2020, 2025)}, acoes=D(10),
                       taxa_sem_risco=D(0.025), beta=D(1.0))
     r = gordon(e)  # g = 0 -> 1 / 0.08
     assert r.valor_por_acao == pytest.approx(12.5)

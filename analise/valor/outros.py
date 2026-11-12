@@ -137,7 +137,7 @@ def gordon(e: Empresa) -> ResultadoMetodo:
     corrida: list[int] = []
     for a in sorted(a for a, v in e.dividendos.items() if v and v > 0):
         corrida = corrida + [a] if corrida and a == corrida[-1] + 1 else [a]
-    if len(corrida) < c["historico"]["anos_minimos"]:
+    if len(corrida) < c["historico"]["anos_pedidos"]:  # spec §9: estáveis há 5 anos ou mais
         return _nao(nome, "Dividendos insuficientes")
     dps = [e.dividendos[a] for a in corrida]
     if any(b < 0.75 * a for a, b in zip(dps, dps[1:])):
