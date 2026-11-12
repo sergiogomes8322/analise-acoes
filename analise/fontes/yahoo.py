@@ -5,6 +5,7 @@ from datetime import date
 import pandas as pd
 import yfinance as yf
 
+from analise.fontes import taxas
 from analise.modelo import Dado, Empresa, Fonte, Serie
 
 MAPA = {
@@ -107,7 +108,7 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
     return e
 
 
-def carregar_empresa(ticker: str, converter: Callable[[str, str], float | None] = lambda de, para: None) -> Empresa | None:
+def carregar_empresa(ticker: str, converter: Callable[[str, str], float | None] = taxas.cambio) -> Empresa | None:
     try:
         t = yf.Ticker(ticker)
         info = {**t.info, "symbol": ticker}
@@ -118,4 +119,10 @@ def carregar_empresa(ticker: str, converter: Callable[[str, str], float | None] 
     except Exception as erro:
         raise FonteIndisponivel(str(erro)) from erro
     precos = hist["Close"] if "Close" in hist else pd.Series(dtype=float)
-    return empresa_de_dados(info, dem, precos, divs, date.today().isoformat(), converter)
+    hoje = date.today().isoformat()
+    e = empresa_de_dados(info, dem, precos, divs, hoje, converter)
+    e.taxa_sem_risco, aviso = taxas.taxa_sem_risco(e.moeda, hoje)
+    if aviso:
+        e.avisos.append(aviso)
+    e.cambio_eur = taxas.para_eur(e.moeda)
+    return e

@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from analise.fontes import yahoo
-from analise.modelo import CAMPOS_ANUAIS
+from analise.modelo import CAMPOS_ANUAIS, Dado, Fonte
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -108,5 +108,26 @@ def test_carregar_empresa_historico_vazio(monkeypatch):
         def history(self, **k):
             return pd.DataFrame()
     monkeypatch.setattr(yahoo.yf, "Ticker", T)
-    e = yahoo.carregar_empresa("X")
+    monkeypatch.setattr(yahoo.taxas, "taxa_sem_risco", lambda m, h: (Dado(0.03, Fonte("t", h)), None))
+    monkeypatch.setattr(yahoo.taxas, "para_eur", lambda m: Dado(1.0, Fonte("t", "2026-11-11")))
+    e = yahoo.carregar_empresa("X", converter=lambda de, para: None)
     assert e.preco.valor == 5.0 and e.precos.empty
+    assert e.taxa_sem_risco.valor == 0.03 and e.cambio_eur.valor == 1.0 and e.avisos == []
+
+
+def test_carregar_empresa_aviso_taxa_defeito(monkeypatch):
+    class T:
+        info = {"currentPrice": 5.0, "currency": "EUR"}
+        income_stmt = balance_sheet = cash_flow = pd.DataFrame()
+        dividends = pd.Series(dtype=float)
+
+        def __init__(self, *a):
+            pass
+
+        def history(self, **k):
+            return pd.DataFrame()
+    monkeypatch.setattr(yahoo.yf, "Ticker", T)
+    monkeypatch.setattr(yahoo.taxas, "taxa_sem_risco", lambda m, h: (Dado(0.027, Fonte("t", h)), "defeito"))
+    monkeypatch.setattr(yahoo.taxas, "para_eur", lambda m: Dado(None, Fonte("t", "2026-11-11")))
+    e = yahoo.carregar_empresa("X")
+    assert "defeito" in e.avisos and e.cambio_eur.valor is None
