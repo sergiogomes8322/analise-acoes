@@ -15,7 +15,7 @@ def D(x):
 
 
 def test_formula_graham():
-    e = fazer_empresa(anual={"eps": {2023: 5 / 1.1, 2024: 5.0}}, taxa_sem_risco=D(0.034))
+    e = fazer_empresa(anual={"eps": {2022: 5 / 1.21, 2023: 5 / 1.1, 2024: 5.0}}, taxa_sem_risco=D(0.034))
     r = formula_graham(e)
     assert r.aplicavel and r.valor_por_acao == pytest.approx(142.5)
 
@@ -125,3 +125,33 @@ def test_valor_central():
 def test_valor_central_vazio():
     c = valor_central([_m(None)], 85.0)
     assert c.central is None and c.margem is None and c.n_metodos == 0
+
+
+def test_epv_indica_anos_usados():
+    anos = range(2021, 2025)
+    e = fazer_empresa(anual={"ebit": {a: 100.0 for a in anos}, "caixa": {2024: 0.0},
+                             "divida_total": {2024: 0.0}}, acoes=D(10))
+    assert epv(e).pressupostos["histórico"] == "média de 4 anos (pedidos 5)"
+
+
+def test_epv_historico_insuficiente():
+    e = fazer_empresa(anual={"ebit": {2023: 1.0, 2024: 1.0}, "caixa": {2024: 0.0},
+                             "divida_total": {2024: 0.0}}, acoes=D(10))
+    assert epv(e).motivo == "Histórico insuficiente (2 anos)"
+
+
+def test_pe_historico_so_ultimos_5_anos():
+    idx = pd.to_datetime([f"{a}-12-30" for a in range(2015, 2025)])
+    precos = pd.Series([1000.0] * 5 + [10.0, 20.0, 30.0, 40.0, 50.0], index=idx)
+    r = pe_historico(fazer_empresa(anual={"eps": {a: 2.0 for a in range(2015, 2025)}}, precos=precos))
+    assert r.valor_por_acao == pytest.approx(30.0) and r.pressupostos["anos"] == 5
+
+
+def test_pe_historico_motivo_com_anos():
+    r = pe_historico(fazer_empresa(anual={"eps": {2023: 2.0, 2024: 2.0}}, precos=_precos()))
+    assert r.motivo == "Histórico insuficiente (2 anos)"
+
+
+def test_formula_graham_historico_insuficiente():
+    r = formula_graham(fazer_empresa(anual={"eps": {2024: 5.0}}, taxa_sem_risco=D(0.034)))
+    assert not r.aplicavel and r.motivo == "Histórico insuficiente (1 ano)"

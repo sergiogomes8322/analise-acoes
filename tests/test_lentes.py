@@ -118,3 +118,34 @@ def test_falha_quando_nao_cumpre():
     r = graham.avaliar(empresa_boa(preco=Dado(100.0, _F)))
     assert r.criterios[4].estado == "falha"
     assert r.criterios[4].valor.startswith("P/E 50,0")
+
+
+def _so_anos(e, anos):
+    from analise.modelo import Serie
+    for k, s in e.anual.items():
+        e.anual[k] = Serie({a: v for a, v in s.valores.items() if a in anos}, s.fonte)
+    return e
+
+
+def test_buffett_indica_media_de_4_anos():
+    r = buffett.avaliar(_so_anos(empresa_boa(), range(2020, 2024)))
+    assert "média de 4 anos (pedidos 5)" in r.criterios[0].valor
+
+
+def test_historico_insuficiente_fica_nd():
+    e = _so_anos(empresa_boa(), (2022, 2023))
+    b, g, l, a = (m.avaliar(e) for m in (buffett, graham, lynch, ackman))
+    assert b.criterios[0].estado == b.criterios[2].estado == b.criterios[3].estado == "nd"
+    assert b.criterios[0].valor == "Histórico insuficiente (2 anos)"
+    assert g.criterios[2].estado == g.criterios[3].estado == "nd"
+    assert l.criterios[0].estado == l.criterios[2].estado == "nd" and l.valor_justo is None
+    assert a.criterios[0].estado == "nd"
+
+
+def test_janela_ignora_prejuizo_antigo():
+    e = empresa_boa()
+    e.anual["lucro_liquido"].valores[2010] = -50e6  # fora dos últimos 5 anos
+    e.dividendos[2010] = 0.0
+    r = graham.avaliar(e)
+    assert r.criterios[2].estado == r.criterios[3].estado == "ok"
+    assert buffett.avaliar(e).criterios[3].estado == "ok"

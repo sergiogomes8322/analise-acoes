@@ -1,5 +1,5 @@
 from analise.config import carregar
-from analise.indicadores import _v, _ultimo_ano, cagr, media
+from analise.indicadores import _v, _ultimo_ano, cagr, historico_insuficiente, janela, media, nota_anos
 from analise.modelo import Empresa, ResultadoMetodo
 
 
@@ -22,10 +22,13 @@ def valor_presente(base: float, g0: float, gT: float, r: float, anos: int) -> fl
     return vp + fluxo * (1 + gT) / (r - gT) / (1 + r) ** anos
 
 
-def _g0(e: Empresa, alternativa: str) -> float:
-    campo = "receita" if "receita" in e.anual else alternativa
-    taxa = cagr(e.anual[campo], 5)[0] if campo in e.anual else None
-    return min(max(taxa or 0.0, 0.0), carregar()["dcf"]["crescimento_max"])
+def _g0(e: Empresa, alternativa: str) -> tuple[float, int]:
+    """CAGR das receitas (ou de `alternativa`) nos últimos anos pedidos, limitado; e n.º de anos."""
+    s = janela(e.anual.get("receita"))
+    if not s.anos():
+        s = janela(e.anual.get(alternativa))
+    taxa = cagr(s, len(s.anos()))[0]
+    return min(max(taxa or 0.0, 0.0), carregar()["dcf"]["crescimento_max"]), len(s.anos())
 
 
 def _avaliar(e: Empresa, nome: str, base: float | None, motivo_neg: str,
@@ -36,13 +39,18 @@ def _avaliar(e: Empresa, nome: str, base: float | None, motivo_neg: str,
         return ResultadoMetodo(nome, None, False, "Sem número de ações")
     if base is None:
         return ResultadoMetodo(nome, None, False, "Sem dados suficientes")
+    g0, n_g0 = _g0(e, alternativa)
+    if motivo := historico_insuficiente(min(anos_historico, n_g0)):
+        return ResultadoMetodo(nome, None, False, motivo)
     if base <= 0:
         return ResultadoMetodo(nome, None, False, motivo_neg)
     d = carregar()["dcf"]
-    g0, gT, r = _g0(e, alternativa), d["crescimento_terminal"], taxa_desconto(e)
+    gT, r = d["crescimento_terminal"], taxa_desconto(e)
     vp = valor_presente(base, g0, gT, r, d["anos"])
-    return ResultadoMetodo(nome, vp / e.acoes.valor, True, pressupostos={
-        "g0": g0, "gT": gT, "r": r, "base": base, "anos_historico": anos_historico})
+    p = {"g0": g0, "gT": gT, "r": r, "base": base, "anos_historico": anos_historico}
+    if nota := nota_anos(n_g0, "CAGR de "):
+        p["histórico"] = nota
+    return ResultadoMetodo(nome, vp / e.acoes.valor, True, pressupostos=p)
 
 
 def dcf(e: Empresa) -> ResultadoMetodo:

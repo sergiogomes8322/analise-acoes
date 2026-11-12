@@ -1,6 +1,6 @@
 import pytest
 
-from analise.modelo import Dado, Fonte
+from analise.modelo import Dado, Fonte, Serie
 from analise.valor.dcf import dcf, owner_earnings, taxa_desconto, valor_presente
 from tests.conftest import fazer_empresa
 
@@ -26,7 +26,7 @@ def test_vp_igual_gordon_quando_g_constante():
 def test_dcf_por_acao():
     r = dcf(_empresa())
     assert r.aplicavel and r.valor_por_acao == pytest.approx(186.36, rel=1e-3)
-    assert set(r.pressupostos) == {"g0", "gT", "r", "base", "anos_historico"}
+    assert set(r.pressupostos) == {"g0", "gT", "r", "base", "anos_historico", "histórico"}
 
 
 def test_dcf_fcf_negativo():
@@ -52,7 +52,7 @@ def test_taxa_desconto_minima():
 
 def test_owner_earnings():
     e = fazer_empresa(
-        anual={"lucro_liquido": {2024: 100}, "amortizacoes": {2024: 20},
+        anual={"lucro_liquido": {2022: 90, 2023: 95, 2024: 100}, "amortizacoes": {2024: 20},
                "capex": {2022: -30, 2023: -30, 2024: -30}},
         acoes=_dado(10), taxa_sem_risco=_dado(0.025), beta=_dado(1.0))
     r = owner_earnings(e)
@@ -61,7 +61,25 @@ def test_owner_earnings():
 
 def test_owner_earnings_negativos():
     e = fazer_empresa(
-        anual={"lucro_liquido": {2024: 10}, "amortizacoes": {2024: 0}, "capex": {2024: -50}},
+        anual={"lucro_liquido": {2022: 10, 2023: 10, 2024: 10}, "amortizacoes": {2024: 0},
+               "capex": {2022: -50, 2023: -50, 2024: -50}},
         acoes=_dado(10))
     r = owner_earnings(e)
     assert not r.aplicavel and r.valor_por_acao is None and r.motivo == "Owner earnings negativos"
+
+
+def test_dcf_historico_insuficiente():
+    r = dcf(_empresa(fcf=(100, 100)))
+    assert not r.aplicavel and r.motivo == "Histórico insuficiente (2 anos)"
+
+
+def test_g0_usa_so_os_ultimos_5_anos():
+    e = _empresa()
+    e.anual["receita"] = Serie({**{2010 + i: 10.0 * 2 ** i for i in range(5)},
+                                **{2020 + i: 1000.0 for i in range(5)}}, _F)
+    assert dcf(e).pressupostos["g0"] == 0.0
+
+
+def test_dcf_indica_anos_usados_no_crescimento():
+    r = dcf(_empresa())  # receita só com 3 anos
+    assert r.pressupostos["histórico"] == "CAGR de 3 anos (pedidos 5)"

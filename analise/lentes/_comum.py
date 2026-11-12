@@ -2,7 +2,7 @@ import math
 from typing import Callable
 
 from analise.config import carregar
-from analise.indicadores import _ultimo_ano, _v
+from analise.indicadores import _ultimo_ano, _v, historico_insuficiente, nota_anos
 from analise.modelo import Criterio, Empresa, ResultadoLente
 
 
@@ -29,11 +29,18 @@ def lim(x: float) -> str:
 
 
 def criterio(descricao: str, x, passa: Callable[[object], bool],
-             texto: Callable[[object], str]) -> Criterio:
-    """`x` None = sem dados; `texto(x)` mostra o número e o limite."""
+             texto: Callable[[object], str], anos: int | None = None, prefixo: str = "") -> Criterio:
+    """`x` None = sem dados; `texto(x)` mostra o número e o limite.
+
+    `anos`: n.º de anos usados num critério plurianual (spec §7): abaixo do mínimo fica N/D;
+    abaixo dos pedidos o valor diz quantos se usaram (ex. "média de 4 anos (pedidos 5)").
+    """
+    if anos is not None and (motivo := historico_insuficiente(anos)):
+        return Criterio(descricao, "nd", "N/D" if anos == 0 else motivo)
     if x is None:
         return Criterio(descricao, "nd", "N/D")
-    return Criterio(descricao, "ok" if passa(x) else "falha", texto(x))
+    nota = nota_anos(anos, prefixo) if anos is not None else ""
+    return Criterio(descricao, "ok" if passa(x) else "falha", texto(x) + (f" · {nota}" if nota else ""))
 
 
 def resultado(investidor: str, criterios: list[Criterio], valor_justo: float | None,

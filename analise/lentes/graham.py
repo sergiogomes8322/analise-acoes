@@ -1,4 +1,4 @@
-from analise.indicadores import _anos
+from analise.indicadores import janela
 from analise.lentes._comum import cfg, criterio, lim, num, positivo, resultado, ult
 from analise.modelo import Empresa, ResultadoLente
 from analise.valor.outros import _bvps, numero_graham
@@ -10,8 +10,8 @@ def avaliar(e: Empresa) -> ResultadoLente:
     cap_eur = cap * fx if cap is not None and fx is not None else None
     ac, pc = ult(e, "ativo_corrente"), ult(e, "passivo_corrente")
     cr = ac / pc if ac is not None and pc else None
-    lucros = e.anual["lucro_liquido"].ultimos(99) if "lucro_liquido" in e.anual else []
-    anos = _anos(e, "lucro_liquido")
+    hist = janela(e.anual.get("lucro_liquido"))
+    anos, lucros = hist.anos(), hist.ultimos(len(hist.anos()))
     divs = None if not anos or not e.dividendos else all(e.dividendos.get(a, 0) > 0 for a in anos)
     eps, bvps, preco = ult(e, "eps"), _bvps(e), e.preco.valor
     pe = None if eps is None or preco is None else (preco / eps if eps > 0 else float("inf"))
@@ -24,9 +24,9 @@ def avaliar(e: Empresa) -> ResultadoLente:
         criterio("Current ratio", cr, lambda x: x >= c["current_ratio_min"],
                  lambda x: f"Current ratio {num(x)} (≥ {lim(c['current_ratio_min'])})"),
         criterio("Lucro positivo todos os anos", min(lucros) if lucros else None,
-                 lambda x: x > 0, lambda x: f"Lucro mínimo {num(x / 1e6, 0)} M (> 0)"),
+                 lambda x: x > 0, lambda x: f"Lucro mínimo {num(x / 1e6, 0)} M (> 0)", len(lucros)),
         criterio("Dividendos todos os anos", divs, lambda x: x,
-                 lambda x: "Dividendos em todos os anos" if x else "Anos sem dividendos"),
+                 lambda x: "Dividendos em todos os anos" if x else "Anos sem dividendos", len(anos)),
         criterio("P/E", pe, lambda x: x <= c["pe_max"],
                  lambda x: f"P/E {num(x)} (≤ {lim(c['pe_max'])})"),
         criterio("P/E × P/B", pepb, lambda x: x <= c["pe_pb_max"],

@@ -4,7 +4,8 @@ import statistics
 import pandas as pd
 
 from analise.config import carregar
-from analise.indicadores import _anos, _ultimo_ano, _v, cagr, media, roe, taxa_imposto
+from analise.indicadores import (_ultimo_ano, _v, cagr, historico_insuficiente, janela, media,
+                                 nota_anos, roe, taxa_imposto)
 from analise.modelo import Empresa, ResultadoMetodo, Serie
 from analise.valor.dcf import dcf, owner_earnings, taxa_desconto
 
@@ -16,6 +17,13 @@ def _nao(nome: str, motivo: str) -> ResultadoMetodo:
 def _ult(e: Empresa, campo: str) -> float | None:
     ano = _ultimo_ano(e, campo)
     return _v(e, campo, ano) if ano else None
+
+
+def _com_nota(p: dict, n: int, prefixo: str) -> dict:
+    """Acrescenta aos pressupostos quantos anos se usaram, se forem menos do que os pedidos."""
+    if nota := nota_anos(n, prefixo):
+        p["histórico"] = nota
+    return p
 
 
 def _bvps(e: Empresa) -> float | None:
@@ -31,8 +39,13 @@ def formula_graham(e: Empresa) -> ResultadoMetodo:
     if eps <= 0:
         return _nao(nome, "EPS negativo ou nulo")
     c = carregar()
-    s = e.anual.get("eps") if cagr(e.anual["eps"], 5)[0] is not None else e.anual.get("receita")
-    taxa = cagr(s, 5)[0] if s else None
+    eps_h, receita_h = janela(e.anual.get("eps")), janela(e.anual.get("receita"))
+    # crescimento do EPS; das receitas só se o do EPS não der e o das receitas der
+    s = next((x for x in (eps_h, receita_h) if cagr(x, len(x.anos()))[0] is not None), eps_h)
+    n = len(s.anos())
+    if motivo := historico_insuficiente(n):
+        return _nao(nome, motivo)
+    taxa = cagr(s, n)[0]
     g = min(max((taxa or 0.0) * 100, 0.0), c["graham"]["g_max"])
     rf = e.taxa_sem_risco.valor
     if rf is None:
@@ -40,7 +53,7 @@ def formula_graham(e: Empresa) -> ResultadoMetodo:
         rf = d.get(e.moeda, d["OUTRA"])
     y = (rf + c["graham"]["spread_aaa"]) * 100
     return ResultadoMetodo(nome, eps * (8.5 + 2 * g) * 4.4 / y, True,
-                           pressupostos={"eps": eps, "g": g, "Y": y})
+                           pressupostos=_com_nota({"eps": eps, "g": g, "Y": y}, n, "CAGR de "))
 
 
 def numero_graham(e: Empresa) -> ResultadoMetodo:
@@ -60,15 +73,19 @@ def epv(e: Empresa) -> ResultadoMetodo:
         return _nao(nome, "Não aplicável a bancos/seguradoras")
     if not e.acoes.valor:
         return _nao(nome, "Sem número de ações")
-    ebit = e.anual["ebit"].ultimos(5) if "ebit" in e.anual else []
+    s = janela(e.anual.get("ebit"))
+    ebit = s.ultimos(len(s.anos()))
     caixa, divida = _ult(e, "caixa"), _ult(e, "divida_total")
     if not ebit or caixa is None or divida is None:
         return _nao(nome, "Sem dados suficientes")
+    if motivo := historico_insuficiente(len(ebit)):
+        return _nao(nome, motivo)
     t, r = taxa_imposto(e), taxa_desconto(e)
     valor = (media(ebit) * (1 - t) / r + caixa - divida) / e.acoes.valor
     if valor <= 0:
         return _nao(nome, "Valor de EPV negativo")
-    return ResultadoMetodo(nome, valor, True, pressupostos={"r": r, "taxa_imposto": t})
+    return ResultadoMetodo(nome, valor, True,
+                           pressupostos=_com_nota({"r": r, "taxa_imposto": t}, len(ebit), "média de "))
 
 
 def _preco_fim_ano(e: Empresa, ano: int) -> float | None:
@@ -86,15 +103,15 @@ def _acoes_ano(e: Empresa, ano: int) -> float | None:
 
 def _mediana_multiplos(multiplos: list[float]) -> tuple[float | None, str]:
     positivos = [m for m in multiplos if m > 0]
-    if len(positivos) < carregar()["historico"]["anos_minimos"]:
-        return None, "Histórico insuficiente"
+    if motivo := historico_insuficiente(len(positivos)):
+        return None, motivo
     return statistics.median(positivos), ""
 
 
 def pe_historico(e: Empresa) -> ResultadoMetodo:
     nome = "P/E histórico"
     eps_atual = _ult(e, "eps")
-    mult = [p / eps for a in _anos(e, "eps")
+    mult = [p / eps for a in janela(e.anual.get("eps")).anos()
             if (eps := _v(e, "eps", a)) and eps > 0 and (p := _preco_fim_ano(e, a))]
     mediana, motivo = _mediana_multiplos(mult)
     if mediana is None:
@@ -102,7 +119,8 @@ def pe_historico(e: Empresa) -> ResultadoMetodo:
     if not eps_atual or eps_atual <= 0:
         return _nao(nome, "EPS atual negativo ou nulo")
     return ResultadoMetodo(nome, mediana * eps_atual, True,
-                           pressupostos={"pe_mediano": mediana, "anos": len(mult)})
+                           pressupostos=_com_nota({"pe_mediano": mediana, "anos": len(mult)},
+                                                  len(mult), "mediana de "))
 
 
 def ev_ebit_historico(e: Empresa) -> ResultadoMetodo:
@@ -112,7 +130,7 @@ def ev_ebit_historico(e: Empresa) -> ResultadoMetodo:
     if not e.acoes.valor:
         return _nao(nome, "Sem número de ações")
     mult = []
-    for a in _anos(e, "ebit"):
+    for a in janela(e.anual.get("ebit")).anos():
         ebit, d, c = _v(e, "ebit", a), _v(e, "divida_total", a), _v(e, "caixa", a)
         p, n = _preco_fim_ano(e, a), _acoes_ano(e, a)
         if ebit and ebit > 0 and d is not None and c is not None and p and n:
@@ -127,7 +145,8 @@ def ev_ebit_historico(e: Empresa) -> ResultadoMetodo:
     if valor <= 0:
         return _nao(nome, "Valor implícito negativo")
     return ResultadoMetodo(nome, valor, True,
-                           pressupostos={"ev_ebit_mediano": mediana, "anos": len(mult)})
+                           pressupostos=_com_nota({"ev_ebit_mediano": mediana, "anos": len(mult)},
+                                                  len(mult), "mediana de "))
 
 
 def gordon(e: Empresa) -> ResultadoMetodo:
@@ -139,6 +158,7 @@ def gordon(e: Empresa) -> ResultadoMetodo:
         corrida = corrida + [a] if corrida and a == corrida[-1] + 1 else [a]
     if len(corrida) < c["historico"]["anos_pedidos"]:  # spec §9: estáveis há 5 anos ou mais
         return _nao(nome, "Dividendos insuficientes")
+    corrida = corrida[-c["historico"]["anos_pedidos"]:]  # spec §7: só os últimos anos pedidos
     dps = [e.dividendos[a] for a in corrida]
     if any(b < 0.75 * a for a, b in zip(dps, dps[1:])):
         return _nao(nome, "Dividendo cortado em mais de 25 %")
@@ -155,14 +175,17 @@ def pb_bancos(e: Empresa) -> ResultadoMetodo:
     if not e.e_financeira:
         return _nao(nome, "Só aplicável a bancos/seguradoras")
     bvps = _bvps(e)
-    roes = [x for a in _anos(e, "lucro_liquido")[-5:] if (x := roe(e, a)) is not None]
+    roes = [x for a in janela(e.anual.get("lucro_liquido")).anos() if (x := roe(e, a)) is not None]
     if bvps is None or not roes:
         return _nao(nome, "Sem dados suficientes")
+    if motivo := historico_insuficiente(len(roes)):
+        return _nao(nome, motivo)
     roe_medio, r = media(roes), taxa_desconto(e)
     if roe_medio <= 0 or bvps <= 0:
         return _nao(nome, "ROE médio ou valor contabilístico negativo")
     return ResultadoMetodo(nome, roe_medio / r * bvps, True,
-                           pressupostos={"roe_medio": roe_medio, "r": r, "bvps": bvps})
+                           pressupostos=_com_nota({"roe_medio": roe_medio, "r": r, "bvps": bvps},
+                                                  len(roes), "média de "))
 
 
 def todos_os_metodos(e: Empresa) -> list[ResultadoMetodo]:

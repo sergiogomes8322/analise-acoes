@@ -1,11 +1,12 @@
-from analise.indicadores import coef_variacao, divida_liquida_ebitda, media
+from analise.indicadores import coef_variacao, divida_liquida_ebitda, janela, media
 from analise.lentes._comum import cfg, criterio, lim, num, pct, positivo, resultado, ult
 from analise.modelo import Empresa, ResultadoLente
 
 
 def avaliar(e: Empresa) -> ResultadoLente:
     c = cfg("ackman")
-    receitas = e.anual["receita"].ultimos(99) if "receita" in e.anual else []
+    hist = janela(e.anual.get("receita"))
+    receitas = hist.ultimos(len(hist.anos()))
     fcf, rec = ult(e, "fcf"), ult(e, "receita")
     margem = fcf / rec if fcf is not None and rec else None
     fcfs = e.anual["fcf"].ultimos(c["anos_fcf"]) if "fcf" in e.anual else []
@@ -14,7 +15,7 @@ def avaliar(e: Empresa) -> ResultadoLente:
 
     criterios = [
         criterio("Estabilidade da receita", coef_variacao(receitas), lambda x: x <= c["cv_receita_max"],
-                 lambda x: f"CV {num(x, 2)} (≤ {lim(c['cv_receita_max'])})"),
+                 lambda x: f"CV {num(x, 2)} (≤ {lim(c['cv_receita_max'])})", len(receitas)),
         criterio("Margem FCF", margem, lambda x: x >= c["margem_fcf_min"],
                  lambda x: f"Margem FCF {pct(x)} (≥ {pct(c['margem_fcf_min'], 0)})"),
         criterio("Dívida líquida / EBITDA", divida_liquida_ebitda(e),
