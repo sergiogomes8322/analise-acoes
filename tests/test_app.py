@@ -47,12 +47,12 @@ def test_pressupostos():
         "g: 0,08; falta: N/D; ajustado: Sim; fonte: x"
 
 
-def _ficha(moeda="EUR", cambio=None, pontuacao=None, central=None):
+def _ficha(moeda="EUR", cambio=None, pontuacao=None, central=None, e_financeira=False):
     f = Fonte("Yahoo Finance", "2026-01-01", "https://example.com")
     sec = Fonte("SEC EDGAR", "2026-01-02", "https://sec.example")
     e = Empresa(ticker="ASML.AS", nome="ASML Holding N.V.", bolsa="Euronext Amsterdam", moeda=moeda,
                 pais="Netherlands", setor="Technology", industria="Semiconductors",
-                descricao="Faz máquinas de litografia.", preco=Dado(612.4, f),
+                descricao="Faz máquinas de litografia.", preco=Dado(612.4, f), e_financeira=e_financeira,
                 capitalizacao=Dado(240e9, f),
                 cambio_eur=Dado(cambio, Fonte("BCE (taxas de referência)", "2026-01-04")),
                 taxa_sem_risco=Dado(0.025, Fonte("BCE (curva AAA 10 anos)", "2026-01-03", "https://ecb.example")),
@@ -197,3 +197,11 @@ def test_erro_inesperado_mostra_mensagem(monkeypatch):
     at.text_input[0].set_value("ASML").run()
     assert not at.exception
     assert [e.value for e in at.error] == ["Ocorreu um erro inesperado ao analisar esta ação."]
+
+
+LIMITADA = "Análise limitada: banco/seguradora — métodos baseados em FCF não se aplicam."
+
+
+@pytest.mark.parametrize("financeira", [True, False])
+def test_banco_mostra_analise_limitada(monkeypatch, financeira):
+    assert (LIMITADA in _textos(_correr(monkeypatch, _ficha(e_financeira=financeira)))) is financeira

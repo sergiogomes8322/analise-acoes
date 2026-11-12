@@ -23,13 +23,17 @@ def agregar(notas: dict[str, float | None]) -> Pontuacao:
 def _sub(e: Empresa, vc: ValorCentral) -> dict[str, dict[str, float | None]]:
     anual = e.anual
     anos = anual["ebit"].anos() if "ebit" in anual else []
-    roic = ind.media([r for a in anos if (r := ind.roic(e, a)) is not None])
+    if e.e_financeira:  # spec §11: ROE em bancos/seguradoras
+        anos_ll = anual["lucro_liquido"].anos() if "lucro_liquido" in anual else []
+        rent = {"roe": ind.media([r for a in anos_ll if (r := ind.roe(e, a)) is not None])}
+    else:
+        rent = {"roic": ind.media([r for a in anos if (r := ind.roic(e, a)) is not None])}
     margens = [m for a in anos if (m := ind.margem_operacional(e, a)) is not None]
     receita = anual.get("receita")
     return {
         "valorizacao": {"margem_seguranca": vc.margem},
         "qualidade": {
-            "roic": roic,
+            **rent,
             "cv_margem_operacional": ind.coef_variacao(margens),
             "anos_receita_a_crescer": ind.fracao_anos_a_crescer(receita) if receita is not None else None,
         },
