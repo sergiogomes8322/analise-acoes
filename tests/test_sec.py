@@ -69,10 +69,10 @@ def test_10q_e_periodos_curtos_ignorados_e_ultimo_arquivado_vence():
     assert ni[2022] == 99803e6 + 7      # 10-K/A arquivado depois vence
 
 
-def test_fcf_e_dividendos():
+def test_fcf_e_sem_valores_por_acao():
     s = sec.series_de_companyfacts(DADOS, HOJE, "1")
     assert s["fcf"].valores[2024] == (118254 - 9447) * 1e6
-    assert s["dividendos"].valores[2024] == 0.98
+    assert not {"eps", "acoes_media", "dividendos"} & set(s)
 
 
 def test_cik_de(monkeypatch):
@@ -88,7 +88,7 @@ def test_enriquecer_substitui_quando_sec_tem_mais_anos(monkeypatch):
     e = sec.enriquecer(_empresa(), "ua-x")
     assert len(e.anual["receita"].anos()) >= 10
     assert e.anual["receita"].fonte.nome == "SEC EDGAR (10-K)"
-    assert e.dividendos[2024] == 0.98
+    assert e.dividendos == {}
     assert e.links[-1].nome == "SEC EDGAR (10-K)" and e.avisos == []
 
 
@@ -160,3 +160,21 @@ def test_enriquecer_nao_verifica_se_moeda_nao_usd(monkeypatch):
     e = _empresa(anos=15)
     e.moeda = "EUR"
     assert sec.enriquecer(e, "ua-x").avisos == []
+
+
+def test_por_acao_nunca_substituido_pela_sec(monkeypatch):
+    # SEC não ajusta desdobramentos (AAPL 4:1 em 2020): EPS, ações e dividendos ficam os do Yahoo
+    from analise import indicadores
+    from tests.test_yahoo import _carregar
+    _rede(monkeypatch)
+    _, e = _carregar("AAPL")
+    e.ticker, e.moeda = "AAPL", "EUR"  # EUR: sem verificação cruzada, o teste é só a substituição
+    for campo in ("eps", "acoes_media", "receita"):
+        e.anual[campo] = Serie({a: v for a, v in e.anual[campo].valores.items() if a in (2023, 2024)},
+                               e.anual[campo].fonte)
+    e.dividendos = {2023: 0.95, 2024: 0.99}
+    eps, acoes, divs = e.anual["eps"], e.anual["acoes_media"], dict(e.dividendos)
+    sec.enriquecer(e, "ua-x")
+    assert e.anual["receita"].fonte.nome == "SEC EDGAR (10-K)"  # totais continuam a vir da SEC
+    assert e.anual["eps"] is eps and e.anual["acoes_media"] is acoes and e.dividendos == divs
+    assert abs(indicadores.diluicao_anual(e)) < 0.05

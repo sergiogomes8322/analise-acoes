@@ -10,16 +10,15 @@ _URL_TICKERS = "https://www.sec.gov/files/company_tickers.json"
 _URL_FACTOS = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
 _BOLSAS_EUA = {"NMS", "NYQ", "NGM", "NCM", "ASE", "PCX",  # códigos Yahoo
                "NasdaqGS", "NasdaqGM", "NasdaqCM", "NYSE", "NYSEArca", "NYSE American"}
+# Só totais: os valores por ação e o n.º de ações da SEC não são ajustados a desdobramentos
+# (ex. AAPL 4:1 em 2020), por isso EPS, ações e dividendos ficam sempre os do Yahoo.
 _TAGS = {  # campo -> (tags por prioridade, unidade)
     "receita": (("Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax", "SalesRevenueNet"), "USD"),
     "lucro_liquido": (("NetIncomeLoss",), "USD"),
     "fluxo_operacional": (("NetCashProvidedByUsedInOperatingActivities",), "USD"),
     "capex": (("PaymentsToAcquirePropertyPlantAndEquipment",), "USD"),
-    "eps": (("EarningsPerShareDiluted",), "USD/shares"),
-    "acoes_media": (("WeightedAverageNumberOfDilutedSharesOutstanding",), "shares"),
     "ebit": (("OperatingIncomeLoss",), "USD"),
     "capital_proprio": (("StockholdersEquity",), "USD"),
-    "dividendos": (("CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"), "USD/shares"),
 }
 
 
@@ -40,7 +39,7 @@ def _anual(factos: list[dict]) -> dict[int, float]:
 
 
 def series_de_companyfacts(dados: dict, hoje: str, cik: str) -> dict[str, Serie]:
-    """Séries anuais (e "dividendos" por ação) dos 10-K; a 1.ª tag manda, as seguintes preenchem anos em falta."""
+    """Séries anuais (totais) dos 10-K; a 1.ª tag manda, as seguintes preenchem anos em falta."""
     gaap = dados.get("facts", {}).get("us-gaap", {})
     fonte = Fonte("SEC EDGAR (10-K)", hoje,
                   f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik}&type=10-K")
@@ -98,11 +97,6 @@ def enriquecer(e: Empresa, user_agent: str | None) -> Empresa:
     usou = False
     for campo, s in series.items():
         # só substitui se a SEC tem mais anos e não está desatualizada face ao atual
-        if campo == "dividendos":
-            atual = e.dividendos
-            if len(s.anos()) > len(atual) and max(s.anos()) >= max(atual, default=0):
-                e.dividendos, usou = dict(s.valores), True
-            continue
         yahoo = e.anual.get(campo)
         if yahoo is None or (len(s.anos()) > len(yahoo.anos())
                              and max(s.anos()) >= max(yahoo.anos(), default=0)):
