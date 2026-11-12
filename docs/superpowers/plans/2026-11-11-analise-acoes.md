@@ -73,7 +73,7 @@ tests/test_*.py
 
 ---
 
-### Tarefa 1: Projeto base, configuração e modelo de dados
+### Task 1: Projeto base, configuração e modelo de dados
 
 **Files:**
 - Create: `pyproject.toml`, `.gitignore`, `config.toml`, `analise/__init__.py`, `analise/config.py`, `analise/modelo.py`, `analise/indicadores.py`
@@ -224,7 +224,7 @@ Run: `uv run pytest -q`. Expected: 5 passed.
 
 ---
 
-### Tarefa 2: Fonte Yahoo (pesquisa + Empresa)
+### Task 2: Fonte Yahoo (pesquisa + Empresa)
 
 **Files:**
 - Create: `analise/fontes/__init__.py`, `analise/fontes/yahoo.py`, `tests/fixtures/yahoo_*.json`, `tests/test_yahoo.py`
@@ -280,7 +280,7 @@ def test_pesquisar_sem_resultados(monkeypatch):  # Search devolve quotes=[] → 
 
 ---
 
-### Tarefa 3: Teste de viabilidade na nuvem (portão de decisão)
+### Task 3: Teste de viabilidade na nuvem (portão de decisão)
 
 Objetivo do spec: confirmar se o Yahoo responde a partir da Streamlit Community Cloud **antes** de construir o resto.
 
@@ -304,7 +304,7 @@ Objetivo do spec: confirmar se o Yahoo responde a partir da Streamlit Community 
 
 ---
 
-### Tarefa 4: Indicadores financeiros (funções puras)
+### Task 4: Indicadores financeiros (funções puras)
 
 **Files:**
 - Modify: `analise/indicadores.py`
@@ -350,7 +350,7 @@ def test_ebitda_negativo():      # divida_liquida_ebitda → None
 
 ---
 
-### Tarefa 5: Taxa sem risco e câmbio
+### Task 5: Taxa sem risco e câmbio
 
 **Files:**
 - Create: `analise/fontes/taxas.py`, `tests/fixtures/bce_*.csv`, `tests/test_taxas.py`
@@ -374,7 +374,7 @@ def test_ebitda_negativo():      # divida_liquida_ebitda → None
 
 ---
 
-### Tarefa 6: DCF e owner earnings
+### Task 6: DCF e owner earnings
 
 **Files:**
 - Create: `analise/valor/__init__.py`, `analise/valor/dcf.py`, `tests/test_dcf.py`
@@ -426,7 +426,7 @@ Cria um construtor de `Empresa` para testes em `tests/conftest.py`: `fazer_empre
 
 ---
 
-### Tarefa 7: Restantes métodos e valor central
+### Task 7: Restantes métodos e valor central
 
 **Files:**
 - Create: `analise/valor/outros.py`, `analise/valor/central.py`, `tests/test_valor_outros.py`
@@ -472,7 +472,7 @@ def test_valor_central_vazio():  # nenhum aplicável → central None
 
 ---
 
-### Tarefa 8: Perfil (crescimento/valor e risco) e pontuação
+### Task 8: Perfil (crescimento/valor e risco) e pontuação
 
 **Files:**
 - Create: `analise/perfil.py`, `analise/pontuacao.py`, `tests/test_perfil.py`, `tests/test_pontuacao.py`
@@ -518,7 +518,7 @@ Para testar a agregação sem empresas reais, expõe também `agregar(notas: dic
 
 ---
 
-### Tarefa 9: Lentes de investidores
+### Task 9: Lentes de investidores
 
 **Files:**
 - Create: `analise/lentes/__init__.py` e os seis módulos, `tests/test_lentes.py`
@@ -548,7 +548,7 @@ Qualquer critério sem dados fica com o estado `"nd"`, nunca `"falha"`.
 
 ---
 
-### Tarefa 10: SEC EDGAR (histórico dos EUA)
+### Task 10: SEC EDGAR (histórico dos EUA)
 
 **Files:**
 - Create: `analise/fontes/sec.py`, `tests/fixtures/sec_aapl_companyfacts.json` (reduzido), `tests/fixtures/sec_tickers.json`, `tests/test_sec.py`
@@ -584,7 +584,7 @@ Qualquer critério sem dados fica com o estado `"nd"`, nunca `"falha"`.
 
 ---
 
-### Tarefa 11: ESEF (relatório oficial da UE) e verificação cruzada
+### Task 11: ESEF (relatório oficial da UE) e verificação cruzada
 
 **Files:**
 - Create: `analise/fontes/esef.py`, `analise/verificacao.py`, `tests/fixtures/gleif_*.json`, `tests/fixtures/xbrl_*.json`, `tests/test_esef.py`
@@ -612,7 +612,7 @@ Qualquer critério sem dados fica com o estado `"nd"`, nunca `"falha"`.
 
 ---
 
-### Tarefa 12: Serviço e ficha completa no telemóvel
+### Task 12: Serviço e ficha completa no telemóvel
 
 **Files:**
 - Create: `analise/servico.py`, `tests/test_app.py`
@@ -666,7 +666,7 @@ def test_app_ficha():          # analisar monkeypatched com Ficha fixa → apare
 
 ---
 
-### Tarefa 13: README para o Sergio
+### Task 13: README para o Sergio
 
 **Files:** Create/Modify: `README.md`
 
