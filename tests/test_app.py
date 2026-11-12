@@ -5,7 +5,7 @@ from analise import servico
 from analise.fontes import yahoo
 from analise.modelo import (Componente, Criterio, Dado, Empresa, Fonte, Pontuacao, ResultadoLente,
                             ResultadoMetodo, Serie)
-from analise.perfil import Alerta
+from analise.perfil import Alerta, Etiqueta
 from analise.valor.central import ValorCentral
 from app import formatar_numero, formatar_pct
 
@@ -69,7 +69,7 @@ def _ficha(moeda="EUR", cambio=None, pontuacao=None, central=None, e_financeira=
                                [Componente("valorizacao", 0.3, 90.0, {"margem_seguranca": 0.15}),
                                 Componente("tendencia", 0.1, None, {"preco_vs_mm200": None})])
     vc = central or ValorCentral(705.0, 540.0, 860.0, 0.13, 1)
-    return servico.Ficha(e, metodos, vc, lentes, p, ("Crescimento", ["CAGR receitas 3 anos: 20,0 %"]),
+    return servico.Ficha(e, metodos, vc, lentes, p, [Etiqueta("Estilo", "Crescimento", "Cresce depressa.", ["CAGR receitas 3 anos: 20,0 %"]), Etiqueta("Dimensão", "Grande empresa", "Large cap.", [])],
                          [Alerta("Beta", "1,90", "> 1,80")], "Médio")
 
 
@@ -154,7 +154,7 @@ def test_app_ficha(monkeypatch):
     assert "**Pontuação: 81/100 · Boa**" in [m.value for m in at.markdown]
     assert [m.label for m in at.metric] == ["Preço", "Risco"]
     rotulos = [e.label for e in at.expander]
-    assert rotulos == ["Sobre a empresa", "Crescimento ou valor", "Riscos", "Valor intrínseco",
+    assert rotulos == ["Sobre a empresa", "Perfil da empresa", "Riscos", "Valor intrínseco",
                        "Lentes", "Pontuação", "Fontes"]
     assert "Conversão para EUR indisponível" not in txt and "≈" not in txt
     # sem valor justo só para Greenblatt e Druckenmiller; Graham sem valor mostra N/D
@@ -212,3 +212,10 @@ def test_detalhe_inteiro_sem_decimais(monkeypatch):
                   [Componente("solidez", 0.2, 70.0, {"piotroski_f": 7, "altman_z": 2.5})])
     txt = _textos(_correr(monkeypatch, _ficha(pontuacao=p)))
     assert "piotroski_f: 7;" in txt and "altman_z: 2,50" in txt
+
+
+def test_perfil_mostra_etiquetas_e_explicacoes(monkeypatch):
+    at = _correr(monkeypatch, _ficha())
+    txt = " ".join(m.value for m in at.markdown)
+    assert "**Crescimento** · **Grande empresa**" in txt
+    assert "Cresce depressa." in txt and "CAGR receitas 3 anos: 20,0 %" in txt

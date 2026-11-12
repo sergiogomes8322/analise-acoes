@@ -122,9 +122,12 @@ def mostrar(f) -> None:
         st.markdown(f"Setor: {e.setor or 'N/D'} · Indústria: {e.industria or 'N/D'} · País: {e.pais or 'N/D'}")
         st.markdown(f"Capitalização: {formatar_numero(e.capitalizacao.valor, moeda, casas=0)}")
 
-    with st.expander("Crescimento ou valor"):
-        tipo, razoes = f.classificacao
-        st.markdown(f"**{tipo}**\n\n" + "\n".join(f"- {r}" for r in razoes))
+    with st.expander("Perfil da empresa"):
+        st.markdown(" · ".join(f"**{t.nome}**" for t in f.perfil))
+        for t in f.perfil:
+            st.markdown(f"**{t.nome}** — {t.explicacao}"
+                        + (f"\n\n<small>{'; '.join(t.razoes)}</small>" if t.razoes else ""),
+                        unsafe_allow_html=True)
 
     with st.expander("Riscos"):
         st.markdown(f"Risco: **{f.risco}**")

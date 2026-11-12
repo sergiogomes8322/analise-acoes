@@ -79,3 +79,59 @@ def test_lucros_concentrados_informativo():
 def test_lucros_repartidos_sem_alerta():
     e = fazer_empresa({"lucro_liquido": {a: 10.0 for a in range(2020, 2025)}}, moeda="EUR")
     assert alertas(e) == []
+
+
+# --- Perfil da empresa (etiquetas) ---
+from analise.modelo import Dado, Fonte  # noqa: E402
+from analise.perfil import etiquetas  # noqa: E402
+
+_F = Fonte("teste", "2026-01-01")
+ANOS = range(2021, 2026)
+
+
+def _d(v):
+    return Dado(v, _F)
+
+
+def _nomes(e, preco):
+    return {t.nome for t in etiquetas(e, preco)}
+
+
+def test_blue_chip_grande_defensiva_rendimento():
+    e = fazer_empresa({"lucro_liquido": {a: 10.0 for a in ANOS}, "receita": {a: 100 * 1.08 ** i for i, a in enumerate(ANOS)},
+                       "ebitda": {2025: 50.0}, "divida_total": {2025: 60.0}, "caixa": {2025: 20.0}},
+                      capitalizacao=_d(50e9), cambio_eur=_d(1.0), setor="Consumer Defensive",
+                      dividendos={a: 2.0 for a in ANOS})
+    n = _nomes(e, 50.0)
+    assert {"Blue chip", "Grande empresa", "Defensiva", "Crescimento estável", "Rendimento (dividendos)"} <= n
+
+
+def test_penny_small_cap_especulativa():
+    e = fazer_empresa({"lucro_liquido": {2024: -5.0, 2025: -3.0}}, capitalizacao=_d(300e6), cambio_eur=_d(1.0))
+    n = _nomes(e, 2.0)
+    assert {"Penny stock", "Pequena empresa", "Small cap especulativa", "Não paga dividendo"} <= n
+    assert "Blue chip" not in n
+
+
+def test_lynch_recuperacao_ativos_ciclica_rapido_lento():
+    rec = fazer_empresa({"lucro_liquido": {2024: -5.0, 2025: 3.0}})
+    assert "Recuperação" in _nomes(rec, 10.0)
+    ativos = fazer_empresa({"capital_proprio": {2025: 2000.0}}, acoes=_d(100.0))
+    assert "Rica em ativos" in _nomes(ativos, 10.0)  # P/B 0,5
+    cic = fazer_empresa({"receita": {a: 100.0 for a in ANOS}}, setor="Energy")
+    assert {"Cíclica (Lynch)", "Cíclica"} <= _nomes(cic, 10.0)
+    rapido = fazer_empresa({"receita": {a: 100 * 1.2 ** i for i, a in enumerate(ANOS)}})
+    assert "Crescimento rápido" in _nomes(rapido, 10.0)
+    lento = fazer_empresa({"receita": {a: 100 * 1.02 ** i for i, a in enumerate(ANOS)}})
+    assert "Crescimento lento" in _nomes(lento, 10.0)
+
+
+def test_sensivel_ao_juro_e_media():
+    e = fazer_empresa(setor="Financial Services", capitalizacao=_d(5e9), cambio_eur=_d(1.0))
+    assert {"Sensível ao juro", "Média empresa"} <= _nomes(e, 10.0)
+
+
+def test_etiquetas_explicam_e_nao_rebentam_sem_dados():
+    ts = etiquetas(fazer_empresa(), 10.0)
+    assert [t.grupo for t in ts][0] == "Estilo"  # estilo aparece sempre
+    assert all(t.explicacao for t in ts)

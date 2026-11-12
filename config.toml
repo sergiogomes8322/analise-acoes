@@ -75,6 +75,18 @@ crescimento_pe = 25
 crescimento_pe_g = 0.10
 valor_pe = 15
 valor_pb = 1.5
+# Etiquetas do perfil (convenções comuns, não regras oficiais)
+grande_eur = 10e9                # capitalização ≥ isto: grande empresa
+pequena_eur = 2e9                # capitalização < isto: pequena empresa
+penny_eur = 5.0                  # preço < isto (em €): penny stock
+blue_chip_divida_ebitda = 3.0
+lynch_lento = 0.05               # crescimento das receitas < isto: crescimento lento
+lynch_rapido = 0.15              # ≥ isto: crescimento rápido; no meio: estável
+ativos_pb = 1.0                  # P/B < isto: rica em ativos
+rendimento_min = 0.03            # dividend yield ≥ isto: ação de rendimento
+setores_defensivos = ["Consumer Defensive", "Healthcare", "Utilities"]
+setores_ciclicos = ["Energy", "Basic Materials", "Industrials", "Consumer Cyclical"]
+setores_juro = ["Financial Services", "Real Estate"]
 
 [verificacao]
 divergencia_max = 0.02

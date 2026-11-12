@@ -16,7 +16,7 @@ def test_analisar_sequencia_completa(monkeypatch):
     assert f.central.n_metodos == sum(m.aplicavel and m.valor_por_acao is not None for m in f.metodos)
     assert [l.investidor for l in f.lentes][:2] and len(f.lentes) == 6
     assert f.pontuacao.faixa in {"Boa", "Neutra", "Fraca", "Sem dados"}
-    assert f.classificacao[0] in {"Crescimento", "Valor", "Misto"}
+    assert f.perfil[0].grupo == "Estilo" and f.perfil[0].nome in {"Crescimento", "Valor", "Misto"}
     assert f.risco in {"Baixo", "Médio", "Alto"}
 
 

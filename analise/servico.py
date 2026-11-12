@@ -15,7 +15,7 @@ class Ficha:
     central: ValorCentral
     lentes: list[ResultadoLente]
     pontuacao: Pontuacao
-    classificacao: tuple[str, list[str]]
+    perfil: list[perfil.Etiqueta]
     alertas: list[perfil.Alerta]
     risco: str
 
@@ -33,4 +33,4 @@ def analisar(ticker: str, user_agent: str | None) -> Ficha | None:
     historico = valor_central([pe_historico(e), ev_ebit_historico(e)], e.preco.valor)
     alertas = perfil.alertas(e)
     return Ficha(e, metodos, central, lentes.todas(e), calcular_pontuacao(e, historico),
-                 perfil.classificar(e, e.preco.valor), alertas, perfil.etiqueta_risco(alertas))
+                 perfil.etiquetas(e, e.preco.valor), alertas, perfil.etiqueta_risco(alertas))

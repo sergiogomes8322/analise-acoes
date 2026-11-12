@@ -41,7 +41,7 @@ Tudo está no `config.toml` da raiz do projeto (não o de `.streamlit/`). Podes 
 - `[dcf]`: prémio de mercado, crescimento terminal, número de anos, etc.
 - `[sem_risco_defeito]`: taxa sem risco por moeda, usada quando não há taxa atual. Tem uma data (`data = "2026-11-11"`) e deve ser **revista** de tempos a tempos.
 
-Há ainda `[graham]`, `[impostos]`, `[historico]`, `[perfil]` e `[verificacao]`.
+Há ainda `[graham]`, `[impostos]`, `[historico]`, `[perfil]` (limites das etiquetas do perfil, p.ex. o que conta como penny stock ou grande empresa) e `[verificacao]`.
 
 ## Mapa das pastas
 
@@ -53,7 +53,7 @@ Há ainda `[graham]`, `[impostos]`, `[historico]`, `[perfil]` e `[verificacao]`.
   - `indicadores.py`: calcula os indicadores financeiros.
   - `fontes/`: vai buscar dados (`yahoo.py`, `taxas.py`, `sec.py`, `esef.py`).
   - `valor/`: métodos de valor intrínseco (`dcf.py`, `outros.py`) e o valor central (`central.py`).
-  - `perfil.py`: classifica a empresa (crescimento, valor, etc.) e deteta os alertas de risco.
+  - `perfil.py`: perfil da empresa (estilo, dimensão, blue chip, penny stock, categoria Peter Lynch, setor, dividendos) e alertas de risco.
   - `pontuacao.py`: calcula a nota de 0 a 100.
   - `lentes/`: uma lente por investidor.
   - `servico.py`: junta tudo para a app usar.
