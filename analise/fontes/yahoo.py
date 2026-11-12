@@ -72,7 +72,6 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
     preco = next((info[k] for k in ("currentPrice", "regularMarketPrice", "previousClose")
                   if info.get(k) is not None), None)
     setor, industria = info.get("sector") or "", info.get("industry") or ""
-    cap = info.get("marketCap")
     e = Empresa(
         ticker=ticker, nome=info.get("longName") or info.get("shortName") or ticker,
         bolsa=info.get("fullExchangeName") or info.get("exchange") or "", moeda=moeda,
@@ -82,7 +81,7 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
         preco=Dado(None if preco is None else preco / div, fonte),
         acoes=Dado(info.get("sharesOutstanding"), fonte),
         beta=Dado(info.get("beta"), fonte),
-        capitalizacao=Dado(None if cap is None else cap / div, fonte),
+        capitalizacao=Dado(info.get("marketCap"), fonte)  # Yahoo já dá a capitalização em GBP, não em GBp,
         precos=(precos / div).dropna(), avisos=avisos, links=[fonte],
     )
 
