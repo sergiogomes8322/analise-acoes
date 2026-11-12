@@ -75,3 +75,44 @@ valor_pb = 1.5
 
 [verificacao]
 divergencia_max = 0.02
+
+[lentes.buffett]
+roe_min = 0.15
+cv_roe_max = 0.3
+divida_lucro_max = 4
+cv_margem_max = 0.2
+margem_seguranca = 0.25
+
+[lentes.graham]
+capitalizacao_min_eur = 2e9
+current_ratio_min = 2
+pe_max = 15
+pe_pb_max = 22.5
+
+[lentes.lynch]
+peg_max = 1
+divida_capital_max = 0.5
+g_min = 0.10
+g_max = 0.25
+
+[lentes.ackman]
+cv_receita_max = 0.15
+margem_fcf_min = 0.10
+divida_ebitda_max = 3
+fcf_yield_min = 0.05
+anos_fcf = 3
+
+[lentes.greenblatt]
+ey_min = 0.08
+roc_min = 0.25
+ey_escala = [0.02, 0.12]
+roc_escala = [0.05, 0.40]
+
+[lentes.druckenmiller]
+mm200_min = 0.0
+momento_min = 0.0
+meses_curto = 6
+meses_longo = 12
+anos_eps_anteriores = 3
+sinais_favoravel = 3
+sinais_neutro = 2
