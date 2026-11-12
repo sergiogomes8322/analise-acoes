@@ -1,0 +1,76 @@
+[dcf]
+premio_mercado = 0.055
+desconto_minimo = 0.08
+crescimento_terminal = 0.025
+crescimento_max = 0.20
+anos = 10
+beta_defeito = 1.0
+
+[graham]
+g_max = 15.0
+spread_aaa = 0.01
+
+[impostos]
+taxa_defeito = 0.25
+
+[historico]
+anos_pedidos = 5
+anos_minimos = 3
+
+[sem_risco_defeito]          # valores por defeito; definidos em 2026-11-11, rever
+data = "2026-11-11"
+EUR = 0.027
+USD = 0.042
+GBP = 0.045
+CHF = 0.008
+SEK = 0.025
+DKK = 0.025
+NOK = 0.039
+OUTRA = 0.04
+
+[pontuacao.pesos]
+valorizacao = 0.30
+qualidade = 0.25
+solidez = 0.20
+risco_mercado = 0.15
+tendencia = 0.10
+
+[pontuacao.faixas]
+boa = 78
+neutra = 60
+cobertura_minima = 0.60
+
+# [zero, cem] por sub-indicador (spec §11)
+[pontuacao.limites]
+margem_seguranca = [-0.30, 0.40]
+roic = [0.05, 0.25]
+cv_margem_operacional = [0.5, 0.1]
+anos_receita_a_crescer = [0.0, 1.0]
+divida_liquida_ebitda = [4.0, 0.0]
+cobertura_juros = [1.5, 10.0]
+altman_z = [1.8, 3.0]
+piotroski_f = [0, 9]
+beta = [1.8, 0.8]
+volatilidade = [0.50, 0.20]
+queda_maxima = [0.65, 0.25]
+preco_vs_mm200 = [-0.20, 0.20]
+momento_12_1 = [-0.30, 0.30]
+
+[alertas]
+volatilidade = 0.40
+queda_maxima = 0.50
+beta = 1.5
+divida_liquida_ebitda = 3.0
+diluicao_anual = 0.03
+altman_z = 1.8
+cobertura_juros = 3.0
+
+[perfil]
+crescimento_cagr = 0.15
+crescimento_pe = 25
+crescimento_pe_g = 0.10
+valor_pe = 15
+valor_pb = 1.5
+
+[verificacao]
+divergencia_max = 0.02

@@ -1,0 +1,24 @@
+[project]
+name = "analise-acoes"
+version = "0.1.0"
+description = "Analise de acoes com Streamlit"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pandas>=3.1.1",
+    "requests>=2.34.2",
+    "streamlit>=1.67.0",
+    "yfinance>=1.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
