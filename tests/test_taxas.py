@@ -165,3 +165,9 @@ def test_taxa_sem_risco_outra_moeda():
     assert d.valor == cfg["GBP"] and aviso
     d, _ = taxas.taxa_sem_risco("JPY", "2026-11-11")
     assert d.valor == cfg["OUTRA"]
+
+
+def test_para_eur_eur_sem_url(monkeypatch):
+    _sem_rede(monkeypatch)
+    d = taxas.para_eur("EUR")
+    assert d.valor == 1.0 and d.fonte.nome == "" and d.fonte.url is None

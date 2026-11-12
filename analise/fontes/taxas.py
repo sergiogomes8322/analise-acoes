@@ -63,6 +63,8 @@ def cambio(de: str, para: str) -> float | None:
 
 
 def para_eur(moeda: str) -> Dado:
+    if moeda == "EUR":  # sem conversão: fonte sem nome não aparece em "Fontes"
+        return Dado(1.0, Fonte("", date.today().isoformat()))
     taxa = _taxa(moeda)
     fonte = Fonte("BCE (taxas de referência)", date.today().isoformat(), _url_cambio(moeda))
     return Dado(None if taxa is None else 1 / taxa, fonte)
