@@ -13,19 +13,22 @@ AVISO_LENTES = "As lentes são interpretações de princípios públicos destes 
 RODAPE = "Informação educativa, não é aconselhamento financeiro."
 SEM_VALOR_JUSTO = ("Druckenmiller", "Greenblatt")  # lentes que não estimam um preço
 ICONES = {"ok": "✅", "falha": "❌", "nd": "➖"}
+NB = " "  # espaço não separável: "1 234,50 €" não parte a meio no telemóvel
 
 
 def formatar_numero(valor: float | None, moeda: str | None = None, casas: int = 2) -> str:
     if valor is None:
         return "N/D"
-    s = f"{valor:,.{casas}f}".replace(",", " ").replace(".", ",")
+    if round(valor, casas) == 0:
+        valor = 0.0  # evita "-0,00"
+    s = f"{valor:,.{casas}f}".replace(",", NB).replace(".", ",")
     if moeda:
-        s += " €" if moeda == "EUR" else f" {moeda}"
+        s += NB + ("€" if moeda == "EUR" else moeda)
     return s
 
 
 def formatar_pct(x: float | None, casas: int = 1) -> str:
-    return "N/D" if x is None else formatar_numero(x * 100, casas=casas) + " %"
+    return "N/D" if x is None else formatar_numero(x * 100, casas=casas) + NB + "%"
 
 
 def fonte_md(fonte) -> str:
@@ -39,9 +42,23 @@ def pesquisar(texto: str):
     return yahoo.pesquisar(texto)
 
 
+class _NaoEncontrada(Exception):
+    """Sai de _analisar como exceção para "não encontrada" não ficar 12 h em cache."""
+
+
 @st.cache_data(ttl=43200)
+def _analisar(ticker: str, user_agent: str | None):
+    ficha = servico.analisar(ticker, user_agent)
+    if ficha is None:
+        raise _NaoEncontrada
+    return ficha
+
+
 def analisar(ticker: str, user_agent: str | None):
-    return servico.analisar(ticker, user_agent)
+    try:
+        return _analisar(ticker, user_agent)
+    except _NaoEncontrada:
+        return None
 
 
 def _user_agent() -> str | None:
@@ -59,8 +76,14 @@ def _pontuacao(p) -> str:
     return f"{math.floor(p.total)}/100 · {p.faixa}" + (" (dados insuficientes)" if p.dados_insuficientes else "")
 
 
+def _valor(v) -> str:
+    if isinstance(v, bool):  # bool é int: tem de vir antes do ramo numérico
+        return "Sim" if v else "Não"
+    return formatar_numero(v) if v is None or isinstance(v, (int, float)) else str(v)
+
+
 def _pressupostos(d: dict) -> str:
-    return "; ".join(f"{k}: {formatar_numero(v) if isinstance(v, (int, float)) else v}" for k, v in d.items())
+    return "; ".join(f"{k}: {_valor(v)}" for k, v in d.items())
 
 
 def mostrar(f) -> None:
@@ -68,10 +91,10 @@ def mostrar(f) -> None:
     taxa_eur = e.cambio_eur.valor if moeda != "EUR" else None
 
     st.subheader(" · ".join([e.nome, e.ticker, e.bolsa, moeda]))
-    c1, c2, c3 = st.columns(3)
+    st.markdown(f"**Pontuação: {_pontuacao(f.pontuacao)}**")  # linha inteira: num metric estreito cortava
+    c1, c2 = st.columns(2)
     c1.metric("Preço", formatar_numero(e.preco.valor, moeda))
-    c2.metric("Pontuação", _pontuacao(f.pontuacao))
-    c3.metric("Risco", f.risco)
+    c2.metric("Risco", f.risco)
     if moeda != "EUR":
         if taxa_eur is None:
             st.caption("Conversão para EUR indisponível")
@@ -132,10 +155,9 @@ def mostrar(f) -> None:
             } for c in p.componentes]), hide_index=True)
 
     with st.expander("Fontes"):
-        fontes = dict.fromkeys([*e.links, *(s.fonte for s in e.anual.values() if s.fonte.nome)])
+        fontes = dict.fromkeys(x for x in [*e.links, *(s.fonte for s in e.anual.values()),
+                                           e.taxa_sem_risco.fonte, e.cambio_eur.fonte] if x.nome)
         st.markdown("\n".join(f"- {fonte_md(x)}" for x in fontes))
-        if e.cambio_eur.fonte.nome and taxa_eur is not None:
-            st.caption(fonte_md(e.cambio_eur.fonte))
         for aviso in e.avisos:
             st.warning(aviso)
 
