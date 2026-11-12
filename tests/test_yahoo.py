@@ -78,6 +78,16 @@ def test_pesquisar_falha_levanta(monkeypatch):
         yahoo.pesquisar("xyz")
 
 
+def test_conversor_chamado_uma_vez():
+    chamadas = []
+
+    def conv(de, para):
+        chamadas.append((de, para))
+        return 0.5
+    _carregar("ASML.AS", conv)
+    assert len(chamadas) <= 1
+
+
 def test_capitalizacao_em_gbp():
     info, e = _carregar("SHEL.L")
     assert abs(e.capitalizacao.valor / (e.preco.valor * e.acoes.valor) - 1) < 0.05

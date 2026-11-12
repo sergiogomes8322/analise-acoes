@@ -1,5 +1,6 @@
 import csv
 import io
+import time
 from datetime import date
 from functools import lru_cache
 
@@ -37,12 +38,20 @@ def _taxa_bce(moeda: str) -> float:
     return valor
 
 
+_FALHAS: dict[str, float] = {}  # moeda -> instante (monotonic) da última falha
+_PAUSA_S = 300
+
+
 def _taxa(moeda: str) -> float | None:
     if moeda == "EUR":
         return 1.0
+    falhou = _FALHAS.get(moeda)
+    if falhou is not None and time.monotonic() - falhou < _PAUSA_S:
+        return None  # BCE em baixo: não repetir o timeout de 10 s a cada chamada
     try:
         return _taxa_bce(moeda)
     except (requests.RequestException, ValueError):
+        _FALHAS[moeda] = time.monotonic()
         return None
 
 

@@ -17,8 +17,10 @@ def _csv(nome):
 @pytest.fixture(autouse=True)
 def _sem_cache():
     taxas._taxa_bce.cache_clear()
+    taxas._FALHAS.clear()
     yield
     taxas._taxa_bce.cache_clear()
+    taxas._FALHAS.clear()
 
 
 def _sem_rede(monkeypatch):
@@ -118,6 +120,43 @@ def test_taxa_sem_risco_yfinance_falha(monkeypatch):
     monkeypatch.setattr(taxas.yf, "Ticker", T)
     d, aviso = taxas.taxa_sem_risco("USD", "2026-11-11")
     assert d.valor == config.carregar()["sem_risco_defeito"]["USD"] and aviso
+
+
+def test_falha_nao_repete_pedido_na_janela(monkeypatch):
+    chamadas = []
+
+    def falha(url, timeout):
+        chamadas.append(url)
+        raise requests.ConnectionError("sem rede")
+    monkeypatch.setattr(taxas.requests, "get", falha)
+    for _ in range(5):
+        assert taxas.cambio("USD", "EUR") is None
+    assert taxas.para_eur("USD").valor is None
+    assert len(chamadas) == 1
+
+
+def test_retry_depois_da_pausa(monkeypatch):
+    relogio = [1000.0]
+    monkeypatch.setattr(taxas.time, "monotonic", lambda: relogio[0])
+    estado = {"falha": True}
+
+    class R:
+        text = _csv("bce_usd.csv")
+
+        def raise_for_status(self):
+            pass
+
+    def get(url, timeout):
+        if estado["falha"]:
+            raise requests.ConnectionError("sem rede")
+        return R()
+    monkeypatch.setattr(taxas.requests, "get", get)
+    assert taxas._taxa("USD") is None
+    estado["falha"] = False
+    relogio[0] += 299
+    assert taxas._taxa("USD") is None  # ainda na pausa
+    relogio[0] += 2
+    assert taxas._taxa("USD") == pytest.approx(1.1127)
 
 
 def test_taxa_sem_risco_outra_moeda():
