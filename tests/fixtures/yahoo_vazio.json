@@ -1,0 +1,3 @@
+{"info": {"currency": "EUR", "financialCurrency": "EUR", "currentPrice": 10.0, "shortName": "Vazia SA", "exchange": "AMS", "sector": "Industrials", "industry": "Machinery"},
+ "demonstracoes": {"income": {"index": [], "columns": [], "data": []}, "balance": {"index": [], "columns": [], "data": []}, "cashflow": {"index": [], "columns": [], "data": []}},
+ "precos": {"index": [], "data": []}, "dividendos": {"index": [], "data": []}}
