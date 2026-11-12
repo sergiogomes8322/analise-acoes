@@ -4,6 +4,7 @@ from functools import lru_cache
 import requests
 
 from analise.modelo import Empresa, Fonte, Serie
+from analise.verificacao import verificar
 
 _URL_TICKERS = "https://www.sec.gov/files/company_tickers.json"
 _URL_FACTOS = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json"
@@ -87,6 +88,13 @@ def enriquecer(e: Empresa, user_agent: str | None) -> Empresa:
     except (requests.RequestException, ValueError):
         e.avisos.append("SEC indisponível")
         return e
+    if e.moeda == "USD" and "receita" in series:  # verificação contra o Yahoo antes de o substituir
+        ano = max(series["receita"].anos())
+        oficial = {"ano": ano, "moeda": "USD"}
+        for campo in ("receita", "lucro_liquido"):
+            if campo in series and ano in series[campo].valores:
+                oficial[campo] = series[campo].valores[ano]
+        e.avisos += verificar(e, oficial, series["receita"].fonte)
     usou = False
     for campo, s in series.items():
         # só substitui se a SEC tem mais anos e não está desatualizada face ao atual

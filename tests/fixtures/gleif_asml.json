@@ -1,0 +1,17 @@
+{
+ "data": [
+  {
+   "type": "lei-records",
+   "id": "724500Y6DUVHQD6OXN27",
+   "attributes": {
+    "lei": "724500Y6DUVHQD6OXN27",
+    "entity": {
+     "legalName": {
+      "name": "ASML Holding N.V.",
+      "language": "nl"
+     }
+    }
+   }
+  }
+ ]
+}

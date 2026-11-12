@@ -142,3 +142,21 @@ def test_falha_do_mapa_nao_fica_em_cache(monkeypatch):
         sec.cik_de("AAPL", "ua-x")
     _rede(monkeypatch)
     assert sec.cik_de("AAPL", "ua-x") == "0000320193"
+
+
+def test_enriquecer_verifica_contra_yahoo_em_usd(monkeypatch):
+    _rede(monkeypatch)
+    s = sec.series_de_companyfacts(DADOS, HOJE, "0000320193")
+    ano = max(s["receita"].anos())
+    e = _empresa(anos=15)
+    e.moeda = "USD"
+    e.anual["receita"] = Serie({ano: s["receita"].valores[ano] * 1.05}, YF)
+    e = sec.enriquecer(e, "ua-x")
+    assert len(e.avisos) == 1 and e.avisos[0].startswith(f"⚠️ Receita {ano}: Yahoo")
+
+
+def test_enriquecer_nao_verifica_se_moeda_nao_usd(monkeypatch):
+    _rede(monkeypatch)
+    e = _empresa(anos=15)
+    e.moeda = "EUR"
+    assert sec.enriquecer(e, "ua-x").avisos == []
