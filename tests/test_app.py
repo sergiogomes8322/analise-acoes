@@ -205,3 +205,10 @@ LIMITADA = "Análise limitada: banco/seguradora — métodos baseados em FCF nã
 @pytest.mark.parametrize("financeira", [True, False])
 def test_banco_mostra_analise_limitada(monkeypatch, financeira):
     assert (LIMITADA in _textos(_correr(monkeypatch, _ficha(e_financeira=financeira)))) is financeira
+
+
+def test_detalhe_inteiro_sem_decimais(monkeypatch):
+    p = Pontuacao(70.0, 1.0, "Neutra", False,
+                  [Componente("solidez", 0.2, 70.0, {"piotroski_f": 7, "altman_z": 2.5})])
+    txt = _textos(_correr(monkeypatch, _ficha(pontuacao=p)))
+    assert "piotroski_f: 7;" in txt and "altman_z: 2,50" in txt

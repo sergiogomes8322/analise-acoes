@@ -155,7 +155,8 @@ def mostrar(f) -> None:
             st.dataframe(pd.DataFrame([{
                 "Componente": c.nome, "Peso": formatar_pct(c.peso, 0),
                 "Nota": formatar_numero(c.nota, casas=0),
-                "Detalhe": "; ".join(f"{k}: {formatar_numero(v)}" for k, v in c.detalhe.items()),
+                "Detalhe": "; ".join(f"{k}: {formatar_numero(v, casas=0 if isinstance(v, int) else 2)}"
+                                     for k, v in c.detalhe.items()),
             } for c in p.componentes]), hide_index=True)
 
     with st.expander("Fontes"):
