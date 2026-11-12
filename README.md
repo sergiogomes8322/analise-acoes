@@ -59,6 +59,7 @@ Há ainda `[graham]`, `[impostos]`, `[historico]`, `[perfil]` e `[verificacao]`.
   - `servico.py`: junta tudo para a app usar.
   - `verificacao.py`: compara dados de fontes diferentes e avisa se divergem.
 - `tests/`: testes automáticos.
+- `.streamlit/`: `config.toml` com o tema; `secrets.toml` é só local e nunca vai para o Git.
 - `docs/`: especificação e planos do projeto.
 - `requirements.txt`: dependências para o Streamlit Cloud (gerado, ver abaixo).
 - `pyproject.toml` e `uv.lock`: dependências do projeto, geridas pelo `uv`.
@@ -68,7 +69,7 @@ Há ainda `[graham]`, `[impostos]`, `[historico]`, `[perfil]` e `[verificacao]`.
 - **Yahoo Finance**: preços e dados financeiros. Não é uma fonte oficial: pode falhar ou mudar sem aviso.
 - **SEC EDGAR** (empresas dos EUA): relatórios oficiais. Exige que o pedido se identifique com um contacto, na variável `SEC_USER_AGENT`. Define-a nos *Secrets* do Streamlit Cloud ou como variável de ambiente. Nunca a pongas no Git.
 - **filings.xbrl.org + GLEIF** (empresas da Europa): relatórios oficiais ESEF. O índice nem sempre encontra a empresa, por isso funciona "o melhor possível".
-- **BCE** (Banco Central Europeu): taxas de juro e câmbios.
+- **BCE** (Banco Central Europeu): a taxa sem risco do EUR e os câmbios. A taxa do USD vem do Yahoo (`^TNX`). As outras moedas usam os valores por defeito do `config.toml`.
 - **TradingView não é usado**: os termos de utilização proíbem a recolha automática de dados.
 
 ## Segredos
@@ -96,4 +97,9 @@ uv export --no-hashes --no-dev -o requirements.txt
 
 ## Windows e antivírus (AVG)
 
-Se aparecerem erros de HTTPS ao correr localmente, a causa costuma ser o antivírus, que inspeciona ligações HTTPS. A configuração do ambiente define `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE` e `CURL_CA_BUNDLE` para apontarem para um ficheiro de certificados que resolve isto. Se mudares de computador, repete esse passo.
+Se aparecerem erros de HTTPS ao correr localmente (`CERTIFICATE_VERIFY_FAILED` ou "unable to get local issuer certificate"), o antivírus está a inspecionar as ligações HTTPS. Há duas soluções:
+
+- **A**: desligar a análise de HTTPS no antivírus, ou excluir os sites de dados.
+- **B**: criar um ficheiro de certificados (o pacote do `certifi` mais o certificado raiz do antivírus, exportado do Windows) e apontar para ele as variáveis de ambiente de utilizador `SSL_CERT_FILE`, `REQUESTS_CA_BUNDLE` e `CURL_CA_BUNDLE`.
+
+Isto só é preciso no teu PC. O Streamlit Cloud não precisa.
