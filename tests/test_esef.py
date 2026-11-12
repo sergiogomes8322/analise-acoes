@@ -155,3 +155,22 @@ def test_valor_nulo_nao_rebenta(monkeypatch):
     monkeypatch.setattr(esef.requests, "get", lambda url, params=None, headers=None, timeout=None:
                         Resp(GLEIF if "gleif" in url else d if url.endswith(".json") else FILINGS))
     assert esef.enriquecer(_empresa()).avisos == ["Relatório oficial não encontrado"]
+
+
+def test_lei_de_sem_nome_correspondente_devolve_none(monkeypatch):
+    hits = {"data": [_hit("A", "Outra Empresa"), _hit("B", "Mais Uma SA")]}
+    monkeypatch.setattr(esef.requests, "get", lambda *a, **k: Resp(hits))
+    assert esef.lei_de("ASML Holding") is None
+
+
+def test_enriquecer_sem_nome_correspondente_avisa(monkeypatch):
+    urls = []
+
+    def get(url, params=None, headers=None, timeout=None):
+        urls.append(url)
+        return Resp({"data": [_hit("A", "Outra Empresa")]} if "gleif" in url else
+                    XBRL if url.endswith(".json") else FILINGS)
+    monkeypatch.setattr(esef.requests, "get", get)
+    e = esef.enriquecer(_empresa())
+    assert e.avisos == ["Relatório oficial não encontrado"] and e.links == []
+    assert urls == [esef._URL_GLEIF]  # sem LEI não procura relatórios de outra empresa

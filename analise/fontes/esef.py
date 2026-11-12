@@ -35,7 +35,7 @@ def lei_de(nome: str) -> str | None:
         for d in ativos:
             if ok(d["attributes"]["entity"]["legalName"]["name"].casefold()):
                 return d["id"]
-    return dados[0]["id"] if dados else None
+    return None  # sem nome correspondente: melhor nenhum relatório do que o de outra empresa
 
 
 def _periodo(p: str) -> tuple[datetime, datetime]:
