@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 
 import pandas as pd
 import yfinance as yf
@@ -91,25 +92,26 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
         avisos.append(f"Balanços em {financeira} sem conversão disponível")
     for campo, rotulo in MAPA.items():
         monetario = campo != "acoes_media"
-        if monetario and taxa is None:
-            continue
-        s = _serie(demonstracoes.get(_ORIGEM[campo]), rotulo, fonte,
+        s = None if monetario and taxa is None else _serie(demonstracoes.get(_ORIGEM[campo]), rotulo, fonte,
                    taxa if monetario else 1.0, campo == "capex")
-        if s is not None:
-            e.anual[campo] = s
+        e.anual[campo] = s or Serie({}, fonte)
 
     ano = int(hoje[:4])
-    por_ano = (dividendos / div).groupby(dividendos.index.year).sum()
-    e.dividendos = {int(a): float(v) for a, v in por_ano.items() if a < ano}
+    if isinstance(dividendos.index, pd.DatetimeIndex) and len(dividendos):
+        por_ano = (dividendos / div).groupby(dividendos.index.year).sum()
+        e.dividendos = {int(a): float(v) for a, v in por_ano.items() if a < ano}
     return e
 
 
 def carregar_empresa(ticker: str, converter: Callable[[str, str], float | None] = lambda de, para: None) -> Empresa | None:
-    from datetime import date
-    t = yf.Ticker(ticker)
-    info = {**t.info, "symbol": ticker}
-    if not any(info.get(k) for k in ("currentPrice", "regularMarketPrice", "previousClose")):
+    try:
+        t = yf.Ticker(ticker)
+        info = {**t.info, "symbol": ticker}
+        if not any(info.get(k) for k in ("currentPrice", "regularMarketPrice", "previousClose")):
+            return None
+        dem = {"income": t.income_stmt, "balance": t.balance_sheet, "cashflow": t.cash_flow}
+        hist, divs = t.history(period="5y"), t.dividends
+    except Exception:
         return None
-    dem = {"income": t.income_stmt, "balance": t.balance_sheet, "cashflow": t.cash_flow}
-    return empresa_de_dados(info, dem, t.history(period="5y")["Close"], t.dividends,
-                            date.today().isoformat(), converter)
+    precos = hist["Close"] if "Close" in hist else pd.Series(dtype=float)
+    return empresa_de_dados(info, dem, precos, divs, date.today().isoformat(), converter)

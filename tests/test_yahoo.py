@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 from analise.fontes import yahoo
+from analise.modelo import CAMPOS_ANUAIS
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -39,7 +40,9 @@ def test_shel_gbp_e_conversao():
 
 def test_sem_conversao_avisa():
     _, e = _carregar("SHEL.L")
-    assert "receita" not in e.anual or e.anual["receita"].ultimo() is None
+    assert set(e.anual) == set(CAMPOS_ANUAIS)
+    assert e.anual["receita"].anos() == []
+    assert e.anual["acoes_media"].anos() != []
     assert any("sem conversão disponível" in a for a in e.avisos)
     assert e.preco.valor > 0
 
@@ -47,7 +50,9 @@ def test_sem_conversao_avisa():
 def test_balancos_vazios():
     _, e = _carregar("vazio")
     assert e.preco.valor == 10.0
-    assert all(s.ultimo() is None for s in e.anual.values())
+    assert set(e.anual) == set(CAMPOS_ANUAIS)
+    assert all(s.anos() == [] for s in e.anual.values())
+    assert e.dividendos == {}
 
 
 def test_capex_positivo():
@@ -61,3 +66,36 @@ def test_pesquisar_sem_resultados(monkeypatch):
             self.quotes = []
     monkeypatch.setattr(yahoo.yf, "Search", S)
     assert yahoo.pesquisar("xyz") == []
+
+
+def test_capitalizacao_em_gbp():
+    info, e = _carregar("SHEL.L")
+    assert abs(e.capitalizacao.valor / (e.preco.valor * e.acoes.valor) - 1) < 0.05
+
+
+def test_carregar_empresa_info_falha(monkeypatch):
+    class T:
+        def __init__(self, *a):
+            pass
+
+        @property
+        def info(self):
+            raise RuntimeError("rede")
+    monkeypatch.setattr(yahoo.yf, "Ticker", T)
+    assert yahoo.carregar_empresa("X") is None
+
+
+def test_carregar_empresa_historico_vazio(monkeypatch):
+    class T:
+        info = {"currentPrice": 5.0, "currency": "EUR"}
+        income_stmt = balance_sheet = cash_flow = pd.DataFrame()
+        dividends = pd.Series(dtype=float)
+
+        def __init__(self, *a):
+            pass
+
+        def history(self, **k):
+            return pd.DataFrame()
+    monkeypatch.setattr(yahoo.yf, "Ticker", T)
+    e = yahoo.carregar_empresa("X")
+    assert e.preco.valor == 5.0 and e.precos.empty
