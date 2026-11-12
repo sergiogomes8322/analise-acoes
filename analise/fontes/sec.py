@@ -18,7 +18,7 @@ _TAGS = {  # campo -> (tags por prioridade, unidade)
     "acoes_media": (("WeightedAverageNumberOfDilutedSharesOutstanding",), "shares"),
     "ebit": (("OperatingIncomeLoss",), "USD"),
     "capital_proprio": (("StockholdersEquity",), "USD"),
-    "dividendos": (("CommonStockDividendsPerShareDeclared",), "USD/shares"),
+    "dividendos": (("CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"), "USD/shares"),
 }
 
 
@@ -87,11 +87,18 @@ def enriquecer(e: Empresa, user_agent: str | None) -> Empresa:
     except (requests.RequestException, ValueError):
         e.avisos.append("SEC indisponível")
         return e
+    usou = False
     for campo, s in series.items():
+        # só substitui se a SEC tem mais anos e não está desatualizada face ao atual
         if campo == "dividendos":
-            if len(s.anos()) > len(e.dividendos):
-                e.dividendos = dict(s.valores)
-        elif len(s.anos()) > len(e.anual[campo].anos()):
-            e.anual[campo] = s
-    e.links.append(next(iter(series.values())).fonte if series else Fonte("SEC EDGAR (10-K)", hoje))
+            atual = e.dividendos
+            if len(s.anos()) > len(atual) and max(s.anos()) >= max(atual, default=0):
+                e.dividendos, usou = dict(s.valores), True
+            continue
+        yahoo = e.anual.get(campo)
+        if yahoo is None or (len(s.anos()) > len(yahoo.anos())
+                             and max(s.anos()) >= max(yahoo.anos(), default=0)):
+            e.anual[campo], usou = s, True
+    if usou:
+        e.links.append(next(iter(series.values())).fonte)
     return e

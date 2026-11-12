@@ -116,3 +116,29 @@ def test_falha_de_rede(monkeypatch):
     e = sec.enriquecer(_empresa(), "ua-x")
     assert "SEC indisponível" in e.avisos
     assert e.anual["receita"].fonte is YF and e.links == []
+
+
+def test_mantem_yahoo_se_sec_desatualizada(monkeypatch):
+    _rede(monkeypatch)
+    e = _empresa()
+    e.anual["receita"] = Serie({2025 + i: 1.0 for i in range(5)}, YF)  # menos anos, mas mais recente
+    sec.enriquecer(e, "ua-x")
+    assert e.anual["receita"].fonte is YF
+
+
+def test_sem_uso_nao_adiciona_link(monkeypatch):
+    _rede(monkeypatch)
+    e = _empresa(anos=15)
+    for c in CAMPOS_ANUAIS:
+        e.anual[c] = Serie({2000 + i: 1.0 for i in range(30)}, YF)
+    e.dividendos = {2000 + i: 1.0 for i in range(30)}
+    sec.enriquecer(e, "ua-x")
+    assert e.links == []
+
+
+def test_falha_do_mapa_nao_fica_em_cache(monkeypatch):
+    _rede(monkeypatch, falha=requests.ConnectionError("x"))
+    with pytest.raises(requests.ConnectionError):
+        sec.cik_de("AAPL", "ua-x")
+    _rede(monkeypatch)
+    assert sec.cik_de("AAPL", "ua-x") == "0000320193"
