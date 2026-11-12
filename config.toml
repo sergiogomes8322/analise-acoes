@@ -64,6 +64,7 @@ divida_liquida_ebitda = 3.0
 diluicao_anual = 0.03
 altman_z = 1.8
 cobertura_juros = 3.0
+fcf_negativo = 0.0
 
 [perfil]
 crescimento_cagr = 0.15

@@ -9,8 +9,8 @@ def agregar(notas: dict[str, float | None]) -> Pontuacao:
     pesos, faixas = cfg["pesos"], cfg["faixas"]
     comps = [Componente(n, p, notas.get(n)) for n, p in pesos.items()]
     com = [c for c in comps if c.nota is not None]
-    cobertura = sum(c.peso for c in com)
-    total = sum(c.peso * c.nota for c in com) / cobertura if com else None
+    cobertura = round(sum(c.peso for c in com), 9)  # evita 77.999... por soma de floats
+    total = round(sum(c.peso * c.nota for c in com) / cobertura, 9) if com else None
     if total is None:
         faixa = "Sem dados"
     elif total >= faixas["boa"] and cobertura >= faixas["cobertura_minima"]:
@@ -31,7 +31,7 @@ def _sub(e: Empresa, vc: ValorCentral) -> dict[str, dict[str, float | None]]:
         "qualidade": {
             "roic": roic,
             "cv_margem_operacional": ind.coef_variacao(margens),
-            "anos_receita_a_crescer": ind.fracao_anos_a_crescer(receita) if receita else None,
+            "anos_receita_a_crescer": ind.fracao_anos_a_crescer(receita) if receita is not None else None,
         },
         "solidez": {
             "divida_liquida_ebitda": ind.divida_liquida_ebitda(e),

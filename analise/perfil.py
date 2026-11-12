@@ -5,6 +5,8 @@ from analise.config import carregar
 from analise.modelo import Empresa
 
 MOEDA = "Moeda ≠ EUR (risco cambial)"
+COBERTURA = "Cobertura de juros"
+INFORMATIVOS = {MOEDA, COBERTURA}  # aparecem na lista mas não contam para a etiqueta
 
 
 def _n(x: float, casas: int = 2) -> str:
@@ -69,6 +71,8 @@ def alertas(e: Empresa) -> list[Alerta]:
         ("Diluição anual", ind.diluicao_anual(e), c["diluicao_anual"], True, _pct),
         ("Altman Z", ind.altman_z(e), c["altman_z"], False, _n),
         ("Cobertura de juros", ind.cobertura_juros(e), c["cobertura_juros"], False, _n),
+        ("FCF negativo", e.anual["fcf"].ultimo() if "fcf" in e.anual else None,
+         c["fcf_negativo"], False, _n),
     ]
     out = [Alerta(n, f(v), ("> " if acima else "< ") + f(lim))
            for n, v, lim, acima, f in regras
@@ -79,5 +83,5 @@ def alertas(e: Empresa) -> list[Alerta]:
 
 
 def etiqueta_risco(alertas: list[Alerta]) -> str:
-    n = sum(a.nome != MOEDA for a in alertas)
+    n = sum(a.nome not in INFORMATIVOS for a in alertas)
     return "Baixo" if n <= 1 else "Médio" if n <= 3 else "Alto"
