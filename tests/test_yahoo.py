@@ -167,3 +167,40 @@ def test_pesquisar_sem_acentos_nao_repete(monkeypatch):
     monkeypatch.setattr(yahoo.yf, "Search", S)
     assert yahoo.pesquisar("xyz") == []
     assert pedidos == ["xyz"]
+
+
+ADR = "Possível ADR: valores por ação podem não ser comparáveis (rácio ações ≠ 1)"
+
+
+def test_racio_acoes_normal_sem_aviso():
+    for nome in ("AAPL", "ASML.AS", "SHEL.L", "vazio"):
+        assert ADR not in _carregar(nome, lambda de, para: 1.0)[1].avisos, nome
+
+
+def test_possivel_adr_avisa():
+    d = json.loads((FIX / "yahoo_ASML.AS.json").read_text(encoding="utf-8"))
+    d["info"]["sharesOutstanding"] /= 2  # ex.: 1 ADR = 2 ações
+    dem = {k: pd.DataFrame(v["data"], index=v["index"], columns=pd.to_datetime(v["columns"]))
+           for k, v in d["demonstracoes"].items()}
+    e = yahoo.empresa_de_dados(d["info"], dem, pd.Series(dtype=float), pd.Series(dtype=float), "2026-11-11")
+    assert ADR in e.avisos
+
+
+def test_moeda_financeira_em_subunidade_normalizada():
+    info = {"symbol": "X.L", "currency": "GBp", "financialCurrency": "GBp", "currentPrice": 100.0}
+    chamadas = []
+    e = yahoo.empresa_de_dados(info, {}, pd.Series(dtype=float), pd.Series(dtype=float), "2026-11-11",
+                               lambda de, para: chamadas.append((de, para)))
+    assert chamadas == [] and not any("sem conversão" in a for a in e.avisos)
+
+
+def test_pesquisar_otc_no_fim(monkeypatch):
+    def q(s, exch, disp):
+        return {"symbol": s, "longname": s, "exchange": exch, "exchDisp": disp, "quoteType": "EQUITY"}
+
+    class S:
+        def __init__(self, *a, **k):
+            self.quotes = [q("ASMLF", "PNK", "OTC Markets"), q("ASML", "NMS", "NASDAQ"),
+                           q("ASMLY", "OTC", "Other OTC"), q("ASML.AS", "AMS", "Amsterdam")]
+    monkeypatch.setattr(yahoo.yf, "Search", S)
+    assert [c.ticker for c in yahoo.pesquisar("asml")] == ["ASML", "ASML.AS", "ASMLF", "ASMLY"]

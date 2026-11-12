@@ -6,6 +6,7 @@ from datetime import date
 import pandas as pd
 import yfinance as yf
 
+from analise import config
 from analise.fontes import taxas
 from analise.modelo import Dado, Empresa, Fonte, Serie
 
@@ -31,6 +32,8 @@ _ORIGEM = {  # campo -> demonstração onde está o rótulo
     **dict.fromkeys(list(MAPA)[14:], "balance"),
 }
 _SUBUNIDADES = {"GBp": "GBP", "ZAc": "ZAR", "ILA": "ILS"}
+_OTC = {"OTC", "PNK", "Other OTC", "OTC Markets"}  # balcão: vão para o fim da lista
+ADR = "Possível ADR: valores por ação podem não ser comparáveis (rácio ações ≠ 1)"
 
 
 class FonteIndisponivel(Exception):
@@ -58,6 +61,7 @@ def _pesquisar(texto: str) -> list[Correspondencia]:
         quotes = yf.Search(texto).quotes
     except Exception as erro:
         raise FonteIndisponivel(str(erro)) from erro
+    quotes = sorted(quotes, key=lambda q: bool({q.get("exchange"), q.get("exchDisp")} & _OTC))  # estável
     return [Correspondencia(q["symbol"], q.get("longname") or q.get("shortname") or "",
                             q.get("exchDisp") or q.get("exchange") or "", q["quoteType"])
             for q in quotes if q.get("quoteType") == "EQUITY" and q.get("symbol")]
@@ -101,6 +105,7 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
     )
 
     financeira = info.get("financialCurrency") or moeda
+    financeira = _SUBUNIDADES.get(financeira, financeira)
     taxa = 1.0 if financeira == moeda else converter(financeira, moeda)
     if taxa is None:
         avisos.append(f"Balanços em {financeira} sem conversão disponível")
@@ -109,6 +114,12 @@ def empresa_de_dados(info: dict, demonstracoes: dict[str, pd.DataFrame], precos:
         s = None if monetario and taxa is None else _serie(demonstracoes.get(_ORIGEM[campo]), rotulo, fonte,
                    taxa if monetario else 1.0, campo == "capex")
         e.anual[campo] = s or Serie({}, fonte)
+
+    # ADR: uma "ação" cotada vale várias (ou uma fração) das ações dos balanços
+    em_bolsa, media = info.get("sharesOutstanding"), e.anual["acoes_media"].ultimo()
+    minimo, maximo = config.carregar()["alertas"]["racio_adr"]
+    if em_bolsa and media and not minimo <= em_bolsa / media <= maximo:
+        avisos.append(ADR)
 
     ano = int(hoje[:4])
     if isinstance(dividendos.index, pd.DatetimeIndex) and len(dividendos):
