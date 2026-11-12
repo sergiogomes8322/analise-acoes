@@ -66,3 +66,16 @@ def test_informativos_nao_contam():
     info = [CAMBIO, Alerta("Cobertura de juros", "1,00", "< 3,00")]
     assert etiqueta_risco(_a(4) + info) == "Alto"
     assert etiqueta_risco(_a(1) + info) == "Baixo"
+
+
+def test_lucros_concentrados_informativo():
+    e = fazer_empresa({"lucro_liquido": {2019: 999.0, 2020: 10.0, 2021: -5.0, 2022: 10.0, 2023: 10.0,
+                                         2024: 100.0}}, moeda="EUR")
+    a = alertas(e)  # 2019 fora da janela de 5 anos; 100 / 130 > 50 %
+    assert [(x.nome, x.valor, x.limite) for x in a] == [("Lucros concentrados num ano", "76,9 %", "> 50,0 %")]
+    assert etiqueta_risco(a + _a(1)) == "Baixo"
+
+
+def test_lucros_repartidos_sem_alerta():
+    e = fazer_empresa({"lucro_liquido": {a: 10.0 for a in range(2020, 2025)}}, moeda="EUR")
+    assert alertas(e) == []

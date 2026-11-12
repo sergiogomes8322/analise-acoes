@@ -4,7 +4,7 @@ import statistics
 import pandas as pd
 
 from analise.config import carregar
-from analise.modelo import Empresa, Serie
+from analise.modelo import Empresa, Fonte, Serie
 
 
 def escala(x: float | None, zero: float, cem: float) -> float | None:
@@ -45,6 +45,27 @@ def cagr(serie: Serie, anos_max: int) -> tuple[float | None, int]:
     if v0 <= 0 or v1 <= 0 or n <= 0:
         return None, n
     return (v1 / v0) ** (1 / n) - 1, n
+
+
+def janela(s: Serie | None) -> Serie:
+    """Os últimos `historico.anos_pedidos` anos de `s` (spec §7); vazia se `s` for None."""
+    if s is None:
+        return Serie({}, Fonte("", ""))
+    anos = s.anos()[-carregar()["historico"]["anos_pedidos"]:]
+    return Serie({a: s.valores[a] for a in anos}, s.fonte)
+
+
+def historico_insuficiente(n: int) -> str | None:
+    """Motivo de N/D se houver menos de `historico.anos_minimos` anos (spec §7), senão None."""
+    if n >= carregar()["historico"]["anos_minimos"]:
+        return None
+    return f"Histórico insuficiente ({n} ano{'' if n == 1 else 's'})"
+
+
+def nota_anos(n: int, prefixo: str = "") -> str:
+    """"" com os anos pedidos; senão p.ex. "média de 4 anos (pedidos 5)" (spec §7)."""
+    pedidos = carregar()["historico"]["anos_pedidos"]
+    return "" if n >= pedidos else f"{prefixo}{n} anos (pedidos {pedidos})"
 
 
 def media(valores: list[float]) -> float | None:
@@ -191,3 +212,12 @@ def piotroski_f(e: Empresa) -> int | None:
 def diluicao_anual(e: Empresa) -> float | None:
     s = e.anual.get("acoes_media")
     return cagr(s, carregar()["historico"]["anos_pedidos"])[0] if s else None
+
+
+def concentracao_lucros(e: Empresa) -> float | None:
+    """Peso do melhor ano na soma dos lucros positivos da janela (spec §12); None sem histórico."""
+    s = janela(e.anual.get("lucro_liquido"))
+    if historico_insuficiente(len(s.anos())):
+        return None
+    positivos = [v for v in s.ultimos(len(s.anos())) if v > 0]
+    return max(positivos) / sum(positivos) if positivos else None

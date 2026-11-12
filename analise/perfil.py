@@ -6,7 +6,8 @@ from analise.modelo import Empresa
 
 MOEDA = "Moeda ≠ EUR (risco cambial)"
 COBERTURA = "Cobertura de juros"
-INFORMATIVOS = {MOEDA, COBERTURA}  # aparecem na lista mas não contam para a etiqueta
+CONCENTRACAO = "Lucros concentrados num ano"
+INFORMATIVOS = {MOEDA, COBERTURA, CONCENTRACAO}  # aparecem na lista mas não contam para a etiqueta
 
 
 def _n(x: float, casas: int = 2) -> str:
@@ -73,6 +74,7 @@ def alertas(e: Empresa) -> list[Alerta]:
         ("Cobertura de juros", ind.cobertura_juros(e), c["cobertura_juros"], False, _n),
         ("FCF negativo", e.anual["fcf"].ultimo() if "fcf" in e.anual else None,
          c["fcf_negativo"], False, _n),
+        (CONCENTRACAO, ind.concentracao_lucros(e), c["concentracao_lucros"], True, _pct),
     ]
     out = [Alerta(n, f(v), ("> " if acima else "< ") + f(lim))
            for n, v, lim, acima, f in regras

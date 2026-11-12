@@ -66,6 +66,7 @@ diluicao_anual = 0.03
 altman_z = 1.8
 cobertura_juros = 3.0
 fcf_negativo = 0.0
+concentracao_lucros = 0.5        # informativo: peso máximo de um ano na soma dos lucros positivos
 
 [perfil]
 crescimento_cagr = 0.15
